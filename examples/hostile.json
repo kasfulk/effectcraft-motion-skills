@@ -1,0 +1,7 @@
+{
+  "theme": "reel",
+  "scenes": [
+    {"type": "hook", "text": "Kata \"kutip\" \\ dan </script>"},
+    {"type": "custom", "jsx": "rect(comp, {x:CX, y:850, w:400, h:400, fill:theme.colors.accent, radius:24});"}
+  ]
+}

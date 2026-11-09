@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, extname, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom"];
@@ -103,8 +107,41 @@ export function durationOf(scene, theme) {
 
 const json = (x) => JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 
-// Task 2 replaces this with the real MAIN JSX block.
-const MAIN = "// MAIN (Task 2)\n";
+const MAIN = String.raw`
+(function () {
+  function ceilFrame(s) { return Math.ceil(s * 30) / 30; }
+  assertFonts(THEME);
+  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), at = 0;
+  for (var i = 0; i < SPEC.scenes.length; i++) {
+    var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
+    var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur, 30);
+    bgFor(c, THEME, scene.bg);
+    var entered = 0;
+    try {
+      if (type === 'custom') {
+        var fn = new Function('comp', 'theme', 'scene', 'dur', scene.jsx);
+        entered = fn(c, THEME, scene, dur);
+        if (typeof entered !== 'number') entered = 0.6 * dur;
+      } else if (SCENES[type]) entered = SCENES[type](c, THEME, scene, dur);
+      else throw new Error('unsupported scene type');
+      if (type === 'custom' && c.numLayers <= 1) throw new Error('renders blank');
+      checkSafe(c, entered);
+    } catch (e) {
+      var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
+      throw new Error('scene ' + (i + 1) + ' (' + type + '): ' + msg);
+    }
+    var need = ceilFrame(entered + 1.5);
+    if (need > dur) {
+      if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need + 's');
+      dur = need; c.duration = dur; finalDurs[i] = dur;
+    }
+    exitAll(c, dur); pre.push(c); starts.push(at); settle.push(entered); at += dur;
+  }
+  var main = app.project.items.addComp('Main', 1080, 1920, 1, at, 30);
+  for (var j = 0; j < pre.length; j++) { var l = main.layers.add(pre[j]); l.startTime = starts[j]; l.outPoint = starts[j] + finalDurs[j]; animate(l.transform.scale, starts[j], starts[j] + finalDurs[j], [100,100], [103,103], 'calm'); }
+  writeLn('ECM ' + JSON.stringify({settle:settle, durs:finalDurs}));
+})();
+`;
 
 export function buildScript(spec, theme, durs) {
   return [
@@ -135,6 +172,38 @@ function check(file) {
   return 0;
 }
 
+function preview(file) {
+  let spec;
+  try { spec = JSON.parse(readFileSync(file, "utf8")); }
+  catch (err) { console.error(`${file}: ${err.message}`); return 1; }
+  const themes = loadThemes(), errors = validate(spec, themes);
+  if (errors.length) { for (const m of errors) console.error(m); return 1; }
+  const theme = themes[spec.theme], durs = spec.scenes.map((s) => durationOf(s, theme));
+  const dir = dirname(file), base = basename(file, extname(file)), project = join(dir, base + '.ecproj'), sheet = join(dir, base + '.sheet.png');
+  const tmp = join(mkdtempSync(join(tmpdir(), 'ecm-')), base + '.build.jsx');
+  try {
+    writeFileSync(tmp, buildScript(spec, theme, durs));
+    const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
+    if (built.status !== 0) { const msg = (built.stderr || built.stdout || '').replace(/^.*?:\d+:\d+: /, '').trim(); console.error(msg); return 1; }
+    const line = `${built.stdout || ''}
+${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
+    if (!line) { console.error('missing ECM output'); return 1; }
+    const meta = JSON.parse(line.slice(4)), starts = [], frames = [], t = meta.settle, ds = meta.durs; let at = 0;
+    for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dir, `${base}.scene-${i + 1}.png`)); at += ds[i]; }
+    for (let i = 0; i < frames.length; i++) {
+      const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
+      if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim()); return 1; }
+      const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
+      if (Number(check.stdout.trim()) < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
+    }
+    const montage = spawnSync('magick', ['montage', ...frames, '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
+    if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim()); return 1; }
+    for (const f of frames) rmSync(f, {force:true});
+    console.log(sheet);
+    return 0;
+  } finally { rmSync(tmp, {force:true}); rmSync(dirname(tmp), {recursive:true, force:true}); }
+}
+
 // Node resolves symlinks in import.meta.url but not in argv[1]; the skill is installed via symlink.
 const isMain = () => {
   try { return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
@@ -144,5 +213,6 @@ const isMain = () => {
 if (isMain()) {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === "check" && arg) process.exitCode = check(arg);
-  else { console.error("usage: ecm.mjs check <spec>"); process.exitCode = 1; }
+  else if (cmd === "preview" && arg) process.exitCode = preview(arg);
+  else { console.error("usage: ecm.mjs <check|preview> <spec>"); process.exitCode = 1; }
 }
