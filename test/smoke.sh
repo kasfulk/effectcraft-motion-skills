@@ -17,6 +17,11 @@ test -f "$base.ecproj"
 test -f "$base.sheet.png"
 text=$(~/.local/bin/effectcraft-cli get S1_hook text text/sourceText --json "$base.ecproj")
 [[ "$text" == *'Kata "kutip" \\ dan </script>'* ]]
+printf '%s\n' '{"theme":"reel","scenes":[{"type":"bars","items":[{"label":"Jan","value":1},{"label":"Feb","value":2}],"highlight":0}]}' > "$TMP/untitled-bars.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/untitled-bars.json" >"$TMP/untitled-bars.out" 2>"$TMP/untitled-bars.err"
+if ~/.local/bin/effectcraft-cli get S1_bars title text/sourceText --json "$TMP/untitled-bars.ecproj" >"$TMP/no-title.out" 2>"$TMP/no-title.err"; then
+  echo 'unexpected title layer in untitled bars scene' >&2; exit 1
+fi
 for theme in reel pitch infopop kinetik tenang edukasi; do
   node -e 'const s=require(process.argv[1]);s.theme=process.argv[2];require("fs").writeFileSync(process.argv[3],JSON.stringify(s))' "$ROOT/examples/all-scenes.json" "$theme" "$TMP/all-$theme.json"
   node "$ROOT/bin/ecm.mjs" preview "$TMP/all-$theme.json" >"$TMP/$theme.out" 2>"$TMP/$theme.err"
@@ -63,6 +68,7 @@ run_success() {
 }
 run_success 'var t=text(comp,"one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour twentyfive twentysix twentyseven twentyeight twentynine thirty thirtyone thirtytwo thirtythree thirtyfour thirtyfive thirtysix thirtyseven thirtyeight thirtynine",{size:300,min:48,maxW:850,maxH:1200}); t.layer.comment="decor";'
 run_success 'var t=text(comp,"Halo",{size:120,x:CX,y:600,align:"center"}),r=t.layer.sourceRectAtTime(0,false),a=t.layer.transform.anchorPoint.value,p=t.layer.transform.position.value,top=p[1]-a[1]+r.top;if(Math.abs(top-600)>2)throw new Error("text top "+top);var q=text(comp,"Halo",{size:120,x:SAFE.x0,y:600,align:"left"}),s=q.layer.sourceRectAtTime(0,false),b=q.layer.transform.anchorPoint.value,c=q.layer.transform.position.value,left=c[0]-b[0]+s.left;if(Math.abs(left-SAFE.x0)>2)throw new Error("text left "+left);'
+run_success 'var f=text(comp,"formatter"); if(fmtID(-1250000)!=="-1.250.000"||fmtID(0)!=="0"||fmtID(2.5)!=="2,5")throw new Error("fmtID");'
 run_failure 'text(comp,"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",{size:300,min:48,maxW:850,maxH:1200});' 'scene 1 (custom): text too long'
 run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent}); r.transform.scale.setValue([250,250]);' 'scene 1 (custom): rect outside safe area'
 

@@ -3,7 +3,7 @@ var SCENE_N = 0;
 var SAFE = {x0:90, x1:940, y0:250, y1:1450};
 var CX = 515;
 function fmtID(value, decimals) {
-  var digits = decimals === undefined ? (String(value).split('.')[1] ? String(value).split('.')[1].length : 0) : decimals;
+  var digits = Math.min(decimals === undefined ? (String(value).split('.')[1] ? String(value).split('.')[1].length : 0) : decimals, 2);
   var parts = Number(value).toFixed(digits).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return parts.length > 1 ? parts[0] + ',' + parts[1] : parts[0];

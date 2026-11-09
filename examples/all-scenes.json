@@ -6,7 +6,7 @@
     {"type":"quote","text":"Yang terukur lebih mudah diperbaiki.","source":"Catatan harian","bg":"ink"},
     {"type":"stat","value":1250000,"prefix":"Rp ","label":"rata-rata gaji bulanan"},
     {"type":"stat","value":2.5,"suffix":" jt","label":"kenaikan tabungan tahunan"},
-    {"type":"bars","title":"Tabungan per bulan","items":[{"label":"Jan","value":1.2},{"label":"Feb","value":1.8},{"label":"Mar","value":1.4},{"label":"Apr","value":2.4},{"label":"Mei","value":1.7}],"highlight":3},
+    {"type":"bars","title":"Tabungan per bulan","items":[{"label":"Jan","value":1.2},{"label":"Feb","value":1.8},{"label":"Mar","value":1.4},{"label":"Apr","value":2.4},{"label":"Mei","value":1.7},{"label":"Jun","value":2.1}],"highlight":3},
     {"type":"donut","value":72,"label":"target tabungan tercapai"},
     {"type":"outro","text":"Mulai dari hari ini.","cta":"Simpan untuk nanti","bg":"accent"}
   ]

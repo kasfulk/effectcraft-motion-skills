@@ -12,6 +12,9 @@ function wordBox(res, word) {
   var x = res.x + (res.align === 'center' ? -lineW / 2 : 0) + measure(prefix, res.font, res.size);
   return {x:x, y:res.y + idx * lineH, w:measure(line, res.font, res.size), h:lineH};
 }
+function contentTop(comp, theme, scene) {
+  return scene.title ? title(comp, theme, scene).bottom + 40 : 300;
+}
 function title(comp, theme, scene, n) {
   n = n || SCENE_N;
   var label = String(n < 10 ? '0' + n : n) + '  ' + String(scene.title);
@@ -70,7 +73,7 @@ var SCENES = {
     var settle = 0.15 + 0.6; revealText(res.layer, 0.15, 0.6, theme.easing); var markerEnd = markEmphasis(comp, theme, res, scene, settle); return Math.max(settle, markerEnd, glowEnd);
   },
   kinetic: function (comp, theme, scene, dur) {
-    var align = theme.align === 'center' ? 'center' : 'left', tx = scene.title ? title(comp, theme, scene).bottom + 40 : 300;
+    var align = theme.align === 'center' ? 'center' : 'left', tx = contentTop(comp, theme, scene);
     var max = 120, n = scene.lines.length, i, widest = 0;
     for (i = 0; i < n; i++) widest = Math.max(widest, measure(scene.lines[i], theme.fonts.display, 120));
     max = Math.max(64, Math.min(120, Math.floor(120 * 850 / widest)));
@@ -102,13 +105,13 @@ var SCENES = {
     return Math.max(1.4, 0.65, 0.65);
   },
   bars: function (comp, theme, scene, dur) {
-    var ink = textColor(theme, scene), top = title(comp, theme, scene).bottom + 70, base = 1250, maxH = base - top, n = scene.items.length, gap = 36, chartW = 780, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0;
+    var ink = textColor(theme, scene), top = contentTop(comp, theme, scene) + 30, base = 1250, maxH = Math.min(650, base - top), n = scene.items.length, gap = 36, strokeW = motif(theme, 'thin') ? 3 : 6, inset = motif(theme, 'outline') || motif(theme, 'thin') ? 36 : 0, chartW = 850 - inset, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0;
     scene.items.forEach(function (it, i) {
       var center = CX - chartW / 2 + w / 2 + i * (w + gap), h = it.value / max * maxH, at = 0.3 + 0.07 * i, end = at + 0.5;
       var fill = i === scene.highlight ? (scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent) : theme.colors.data;
       var outline = motif(theme, 'outline'), thin = motif(theme, 'thin') && i !== scene.highlight;
       if (h > 0) {
-        var bar = rect(comp, {x:center,y:base,w:w,h:h,fill:thin ? null : fill,stroke:outline || thin ? theme.colors.ink : null,strokeW:thin ? 3 : 6,radius:motif(theme, 'square') ? 0 : 10,origin:'bottom',name:'bar'});
+        var bar = rect(comp, {x:center,y:base,w:w,h:h,fill:thin ? null : fill,stroke:outline || thin ? theme.colors.ink : null,strokeW:thin ? 3 : strokeW,radius:motif(theme, 'square') ? 0 : 10,origin:'bottom',name:'bar'});
         animate(bar.transform.scale, at, end, [100,0], [100,100], theme.easing);
         if (motif(theme, 'hardShadow')) shadow(bar, theme.colors.ink, 100, 135, 9, 0);
         if (motif(theme, 'softShadow')) shadow(bar, '#2b2a28', 16, 135, 7, 12);

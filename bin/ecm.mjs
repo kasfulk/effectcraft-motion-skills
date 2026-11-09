@@ -30,6 +30,7 @@ function sceneErrors(s) {
       break;
     case "stat":
       if (!Number.isFinite(s.value)) e.push("value must be a number");
+      else if (Math.abs(s.value) >= 1e15) e.push("value must be below 1e15");
       break;
     case "bars": {
       const ok = Array.isArray(s.items) && s.items.length >= 2 && s.items.length <= 6

@@ -23,6 +23,7 @@ test("errors", () => {
   assert.deepEqual(v([{type:"chart"}]), ["scene 1 (chart): type unknown"]);
   assert.deepEqual(v([{type:"hook"}]), ["scene 1 (hook): text required"]);
   assert.deepEqual(v([{type:"donut", value:120}]), ["scene 1 (donut): value must be 0–100"]);
+  assert.deepEqual(v([{type:"stat", value:1e15}]), ["scene 1 (stat): value must be below 1e15"]);
   assert.deepEqual(v([{type:"bars", items:[{label:"a",value:0},{label:"b",value:0}]}]), ["scene 1 (bars): items need at least one value > 0"]);
   assert.deepEqual(v([{type:"bars", items:[{label:"a",value:1},{label:"b",value:2}], highlight:2}]), ["scene 1 (bars): highlight must be 0–1"]);
   assert.deepEqual(v([{type:"hook", text:"Gaji naik", emphasis:"turun"}]), ["scene 1 (hook): emphasis \"turun\" not found in text"]);
