@@ -94,7 +94,7 @@ run_success 'var f=text(comp,"formatter"); if(fmtID(-1250000)!=="-1.250.000"||fm
 run_failure 'text(comp,"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",{size:300,min:48,maxW:850,maxH:1200});' 'scene 1 (custom): text too long'
 run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent}); r.transform.scale.setValue([250,250]);' 'scene 1 (custom): rect outside safe area'
 
-if pgrep -fl effectcraft-cli; then exit 1; fi
+if pgrep -x effectcraft-cli; then exit 1; fi
 
 LOCK=/tmp/ecm-render.lock
 own_lock=0

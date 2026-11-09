@@ -39,7 +39,7 @@ Validates the JSON without starting EffectCraft. It prints one line per scene, s
 node bin/ecm.mjs preview examples/hemat.json
 ```
 
-Validates, builds the EffectCraft project, renders one frame per scene, checks for blank frames, and writes a contact sheet next to the spec. It prints the sheet path. Exact pipeline errors include `effectcraft-cli failed to start`, `missing ECM output`, `scene 1 (hook): blank check failed: ...`, and `scene 1 (hook): renders blank at 2.5s`. Generated engine errors retain the `file:line:col: message` format on stderr after the source location is removed from the displayed message. Examples from the smoke cases include:
+Validates, builds the EffectCraft project, renders one frame per scene, checks for blank frames, and writes a contact sheet next to the spec. It prints the sheet path. Exact pipeline errors include `effectcraft-cli failed to start`, `missing ECM output`, `scene 1 (hook): blank check failed: ...`, and `scene 1 (hook): renders blank at 2.5s`. Engine errors arrive as `file:line:col: message`; `ecm.mjs` strips the location and prints the message. Examples from the smoke cases include:
 
 - `scene 1 (custom): font NoSuchFont-Bold is not installed`
 - `scene 1 (custom): SyntaxError`
@@ -47,6 +47,7 @@ Validates, builds the EffectCraft project, renders one frame per scene, checks f
 - `scene 1 (custom): rect outside safe area`
 - `scene 1 (steps): text too long`
 - `scene 1 (hook): text too long`
+
 The exact duration value depends on the returned settle time and is formatted as `duration too short, needs ≥ Ns`.
 
 ### `render`
@@ -77,20 +78,19 @@ taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
 
 ## Raw EffectCraft CLI idioms
 
-These commands are useful for edits outside the pipeline. The project file is passed as the final argument where shown:
+These commands are useful for edits outside the pipeline. Verified on effectcraft-cli 0.22. Pass the project as `--project F.ecproj` or as a trailing `F.ecproj`. Layers can be given by name, by `#n` (stack index, where 1 is the top) or by id. Comps are named `S<n>_<type>`, plus `Main`.
 
 ```sh
-effectcraft-cli get S1_hook text text/sourceText --json project.ecproj
-effectcraft-cli get S4_stat value text/sourceText --time 2 --json project.ecproj
-# JSON expression reads include the evaluated field:
-node -e 'process.stdout.write(JSON.parse(process.argv[1]).evaluated)' "$value"
-effectcraft-cli props Main '#2' --flat
-effectcraft-cli set Main '#2' transform/opacity 0 --time 0 project.ecproj --save
-effectcraft-cli render-frame project.ecproj --time 2.5 --max-side 480 --out frame.png --json
-effectcraft-cli script FILE.jsx --empty --save-as project.ecproj
+C=effectcraft-cli; F=video.ecproj
+$C get S1_hook text text/sourceText --json --project $F
+$C get S2_stat value text/sourceText --time 2 --json $F   # expression: read the "evaluated" field
+$C props S1_donut '#4' --flat $F                           # property paths of a layer
+$C set S1_hook text transform/opacity 0 --time 0 --project $F --save
+$C render-frame --project $F --comp Main --time 2.5 --max-side 480 --out frame.png
+$C script FILE.jsx --empty --save-as $F                    # run AE-style JSX
 ```
 
-The plan verifies that expression reads can be inspected through the JSON `evaluated` field. The generated script uses PostScript font names, including `HelveticaNeue-CondensedBlack`, `HelveticaNeue-Medium`, `Inter-ExtraBold`, `Inter-Medium`, `JetBrainsMono-Medium`, `Montserrat-ExtraBold`, `Montserrat-SemiBold`, `DINCondensed-Bold`, `AvenirNextCondensed-DemiBold`, `AvenirNext-Medium`, `AvenirNext-Regular`, `AvenirNext-DemiBold`, `AvenirNext-Bold`, and `PlayfairDisplayRoman-Bold`. `PlayfairDisplay-Bold` and `Inter-Regular` do not resolve.
+The generated script uses PostScript font names, including `HelveticaNeue-CondensedBlack`, `HelveticaNeue-Medium`, `Inter-ExtraBold`, `Inter-Medium`, `JetBrainsMono-Medium`, `Montserrat-ExtraBold`, `Montserrat-SemiBold`, `DINCondensed-Bold`, `AvenirNextCondensed-DemiBold`, `AvenirNext-Medium`, `AvenirNext-Regular`, `AvenirNext-DemiBold`, `AvenirNext-Bold`, and `PlayfairDisplayRoman-Bold`. `PlayfairDisplay-Bold` and `Inter-Regular` do not resolve.
 
 ## Pitfalls (verified)
 
