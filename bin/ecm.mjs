@@ -61,7 +61,7 @@ function sceneErrors(s) {
   for (const k of ["title", "label", "prefix", "suffix", "source", "cta"]) {
     if (s[k] !== undefined && typeof s[k] !== "string") e.push(`${k} must be a string`);
   }
-  const main = s.type === "kinetic" ? Array.isArray(s.lines) && s.lines : TEXT_TYPES.includes(s.type) && s.text;
+  const main = s.type === "kinetic" ? strs(s.lines, 1, 6) && s.lines : TEXT_TYPES.includes(s.type) && s.text;
   if (s.emphasis !== undefined && (typeof main === "string" || Array.isArray(main))) {
     if (!str(s.emphasis)) e.push("emphasis must be a non-empty string");
     else if (Array.isArray(main) ? !main.some((line) => line.toLowerCase().includes(s.emphasis.toLowerCase())) : !main.toLowerCase().includes(s.emphasis.toLowerCase())) {
@@ -252,7 +252,7 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
       const deviation = Number((check.stdout || '').trim());
       if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim() || check.error?.message || 'magick failed'}`); return {code:1}; }
-      if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
+      if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return {code:1}; }
     }
     const montage = spawnSync('magick', ['montage', '-font', '/System/Library/Fonts/Helvetica.ttc', ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
     if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim() || montage.error?.message || 'magick montage failed'); return {code:1}; }
