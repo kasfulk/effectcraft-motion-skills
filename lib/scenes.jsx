@@ -105,7 +105,7 @@ var SCENES = {
     return Math.max(1.4, 0.65, 0.65);
   },
   bars: function (comp, theme, scene, dur) {
-    var ink = textColor(theme, scene), top = contentTop(comp, theme, scene) + 30, base = 1250, maxH = Math.min(650, base - top), n = scene.items.length, gap = 36, strokeW = motif(theme, 'thin') ? 3 : 6, inset = motif(theme, 'outline') || motif(theme, 'thin') ? 36 : 0, chartW = 850 - inset, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0;
+    var ink = textColor(theme, scene), top = contentTop(comp, theme, scene) + 30, base = 1250, maxH = Math.min(650, base - top), n = scene.items.length, gap = 36, strokeW = motif(theme, 'thin') ? 3 : 6, inset = (motif(theme, 'outline') || motif(theme, 'thin')) ? 26 : 0, chartW = 850 - inset, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0; // 26px keeps the engine's expanded stroke bounds within SAFE.
     scene.items.forEach(function (it, i) {
       var center = CX - chartW / 2 + w / 2 + i * (w + gap), h = it.value / max * maxH, at = 0.3 + 0.07 * i, end = at + 0.5;
       var fill = i === scene.highlight ? (scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent) : theme.colors.data;
