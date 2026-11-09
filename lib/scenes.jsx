@@ -55,6 +55,11 @@ function markEmphasis(comp, theme, res, scene, revealEnd) {
   return 0;
 }
 function textColor(theme, scene) { return onColor(theme, theme.colors[scene.bg || 'base']); }
+function shadow(layer, color, opacity, direction, distance, softness) {
+  var e = layer.property('Effects').addProperty('Drop Shadow');
+  e.property('Shadow Color').setValue(rgb(color)); e.property('Opacity').setValue(opacity);
+  e.property('Direction').setValue(direction); e.property('Distance').setValue(distance); e.property('Softness').setValue(softness);
+}
 var SCENES = {
   hook: function (comp, theme, scene, dur) {
     var bgHex = theme.colors[scene.bg || 'base'], ink = onColor(theme, bgHex), align = theme.align === 'center' ? 'center' : 'left';
@@ -83,6 +88,47 @@ var SCENES = {
     slab(comp, theme, res.y, res.h, dur);
     if (scene.source) { var sourceY = res.y + res.h + (motif(theme, 'slab') ? 80 : 30), sourceColor = motif(theme, 'slab') ? theme.colors.muted : ink; text(comp, '— ' + scene.source, {font:theme.fonts.label, size:36, min:36, color:sourceColor, align:'center', x:CX, y:sourceY, maxW:820, maxH:80, name:'source'}); }
     revealText(res.layer, 0.15, 0.9, theme.easing); var markerEnd = markEmphasis(comp, theme, res, scene, 1.05); return Math.max(1.05, markerEnd);
+  },
+  stat: function (comp, theme, scene, dur) {
+    var ink = textColor(theme, scene), finalValue = (scene.prefix || '') + fmtID(scene.value) + (scene.suffix || '');
+    var size = 300; while (size > 120 && measure(finalValue, theme.fonts.display, size) > 850) size = Math.max(120, Math.floor(size * 0.94));
+    var v = text(comp, finalValue, {font:theme.fonts.display, size:size, min:120, color:ink, align:'center', x:CX, y:820, maxW:850, maxH:400, name:'value'});
+    v.layer.property('Source Text').expression = counterExpr(0.2, 1.4, scene.value, scene.prefix || '', scene.suffix || '');
+    animate(v.layer.transform.scale, 0.2, 0.65, [0,0], [100,100], theme.easing);
+    var label = text(comp, scene.label, {font:theme.fonts.body, size:56, min:48, color:ink, align:'center', x:CX, y:v.y + v.h + 40, maxW:850, maxH:150, name:'label'});
+    if (motif(theme, 'hardShadow')) shadow(v.layer, theme.colors.ink, 100, 135, 9, 0);
+    if (motif(theme, 'softShadow')) shadow(v.layer, '#2b2a28', 16, 135, 7, 12);
+    animate(v.layer.opacity, 0.2, 0.65, 0, 100, theme.easing); animate(label.layer.opacity, 0.25, 0.65, 0, 100, theme.easing);
+    return Math.max(1.4, 0.65, 0.65);
+  },
+  bars: function (comp, theme, scene, dur) {
+    var ink = textColor(theme, scene), top = title(comp, theme, scene).bottom + 70, base = 1250, maxH = base - top, n = scene.items.length, gap = 36, chartW = 780, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0;
+    scene.items.forEach(function (it, i) {
+      var center = CX - chartW / 2 + w / 2 + i * (w + gap), h = it.value / max * maxH, at = 0.3 + 0.07 * i, end = at + 0.5;
+      var fill = i === scene.highlight ? (scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent) : theme.colors.data;
+      var outline = motif(theme, 'outline'), thin = motif(theme, 'thin') && i !== scene.highlight;
+      if (h > 0) {
+        var bar = rect(comp, {x:center,y:base,w:w,h:h,fill:thin ? null : fill,stroke:outline || thin ? theme.colors.ink : null,strokeW:thin ? 3 : 6,radius:motif(theme, 'square') ? 0 : 10,origin:'bottom',name:'bar'});
+        animate(bar.transform.scale, at, end, [100,0], [100,100], theme.easing);
+        if (motif(theme, 'hardShadow')) shadow(bar, theme.colors.ink, 100, 135, 9, 0);
+        if (motif(theme, 'softShadow')) shadow(bar, '#2b2a28', 16, 135, 7, 12);
+      }
+      var val = text(comp, fmtID(it.value), {font:theme.fonts.body,size:44,min:36,color:ink,align:'center',x:center,y:base-h-12-54,maxW:w+20,maxH:60,name:'bar-value'});
+      animate(val.layer.opacity, end, end + 0.2, 0, 100, theme.easing);
+      text(comp, it.label, {font:theme.fonts.label,size:40,min:36,color:ink,align:'center',x:center,y:1270,maxW:w+30,maxH:90,name:'bar-label'});
+      settle = end + 0.2;
+    });
+    return settle;
+  },
+  donut: function (comp, theme, scene, dur) {
+    var ink = textColor(theme, scene), track = ring(comp, {cx:CX,cy:820,d:560,strokeW:56,color:theme.colors.data}), progress = ring(comp, {cx:CX,cy:820,d:560,strokeW:56,color:scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent});
+    track.layer.transform.opacity.setValue(30);
+    progress.trim.property('Start').setValue(0); animate(progress.trim.property('End'), 0.2, 1.4, 0, scene.value, theme.easing);
+    var v = text(comp, String(scene.value) + '%', {font:theme.fonts.display,size:150,min:96,color:ink,align:'center',x:CX,y:820,maxW:500,maxH:220,name:'value'});
+    v.layer.property('Source Text').expression = counterExpr(0.2,1.4,scene.value,'','%');
+    text(comp, scene.label, {font:theme.fonts.body,size:48,min:36,color:ink,align:'center',x:CX,y:1190,maxW:850,maxH:140,name:'label'});
+    animate(v.layer.opacity,0.2,0.6,0,100,theme.easing); animate(v.layer.transform.scale,0.2,0.6,[0,0],[100,100],theme.easing);
+    return 1.4;
   },
   outro: function (comp, theme, scene, dur) {
     var ink = textColor(theme, scene), res = text(comp, scene.text, {font:theme.fonts.display, size:120, min:64, color:motif(theme, 'slab') ? theme.colors.base : ink, align:'center', x:CX, y:700, maxW:850, maxH:500, name:'text'});

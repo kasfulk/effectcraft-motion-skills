@@ -2,6 +2,16 @@
 var SCENE_N = 0;
 var SAFE = {x0:90, x1:940, y0:250, y1:1450};
 var CX = 515;
+function fmtID(value, decimals) {
+  var digits = decimals === undefined ? (String(value).split('.')[1] ? String(value).split('.')[1].length : 0) : decimals;
+  var parts = Number(value).toFixed(digits).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return parts.length > 1 ? parts[0] + ',' + parts[1] : parts[0];
+}
+function counterExpr(t0, t1, value, prefix, suffix) {
+  var dec = String(value).split('.')[1], fmt = fmtID.toString();
+  return '(function(){var fmt=' + fmt + ';return ' + JSON.stringify(prefix || '') + '+fmt(ease(time,' + t0 + ',' + t1 + ',0,' + value + '),' + (dec ? dec.length : 0) + ')+' + JSON.stringify(suffix || '') + ';})()';
+}
 function rgb(hex) {
   var h = String(hex).replace(/^#/, '');
   return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
@@ -80,9 +90,10 @@ function easeArray(influence, dims) {
 }
 function animate(prop, t0, t1, v0, v1, easing) {
   var dims = Array.isArray(v0) ? v0.length : 1, name = easing || THEME.easing, profile = easeProfile(name), free = easeArray(profile.out, dims);
-  var overshoot = name === 'pop' && prop.matchName === 'ADBE Scale' && Array.isArray(v1) && v1[0] > v0[0];
+  var grows = false; for (var gi = 0; gi < dims; gi++) if (v1[gi] > v0[gi]) grows = true;
+  var overshoot = name === 'pop' && prop.matchName === 'ADBE Scale' && Array.isArray(v1) && grows;
   prop.setValueAtTime(t0, v0); var k1 = prop.numKeys;
-  if (overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(v1[i] * 1.12); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
+  if (overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(v1[i] !== v0[i] ? v1[i] * 1.12 : v1[i]); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
   prop.setValueAtTime(t1, v1); var k2 = prop.numKeys, outEase = easeArray(profile.out, dims), inEase = easeArray(profile.in, dims);
   prop.setTemporalEaseAtKey(k1, free, outEase); prop.setTemporalEaseAtKey(k2, inEase, free);
   if (overshoot) { var ko = k2 - 1; prop.setTemporalEaseAtKey(ko, outEase, inEase); }

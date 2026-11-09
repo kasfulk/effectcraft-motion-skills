@@ -22,6 +22,11 @@ for theme in reel pitch infopop kinetik tenang edukasi; do
   node "$ROOT/bin/ecm.mjs" preview "$TMP/all-$theme.json" >"$TMP/$theme.out" 2>"$TMP/$theme.err"
   test -f "$TMP/all-$theme.sheet.png"
 done
+for counter in '4|Rp 1.250.000' '5|2,5 jt'; do
+  scene=${counter%%|*}; expected=${counter#*|}
+  value=$(~/.local/bin/effectcraft-cli get "S${scene}_stat" value text/sourceText --time 2 --json "$TMP/all-reel.ecproj")
+  [[ "$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).evaluated)' "$value")" == *"$expected"* ]]
+done
 long=$(printf 'panjangsekali%.0s ' {1..80})
 printf '%s\n' "{\"theme\":\"reel\",\"scenes\":[{\"type\":\"hook\",\"text\":\"$long\"}]}" > "$TMP/too-long.json"
 set +e
