@@ -42,11 +42,13 @@ function text(comp, str, o) {
   for (;;) {
     lines = wrapWords(str, font, size, maxW); w = 0; for (var i=0;i<lines.length;i++) w = Math.max(w, measure(lines[i], font, size)); h = lines.length * size * 1.12;
     if (w <= maxW && h <= maxH) break;
-    size = Math.floor(size * 0.94); if (size < min) throw new Error('text too long');
+    var next = Math.max(min, Math.floor(size * 0.94));
+    if (next === size) throw new Error('text too long');
+    size = next;
   }
   var l = comp.layers.addText(lines.join('\r')); l.name = o.name || 'text'; setText(l, lines.join('\r'), font, size, color, o.align || 'left');
   var r = l.sourceRectAtTime(0, false), x = o.x === undefined ? CX : o.x, y = o.y === undefined ? SAFE.y0 : o.y;
-  l.transform.anchorPoint.setValue([r.left + r.width / 2, r.top]); l.transform.position.setValue([o.align === 'center' ? x : x + r.width / 2, y]);
+  l.transform.anchorPoint.setValue([r.left + r.width / 2, r.top]); l.transform.position.setValue([o.align === 'center' ? x : x + r.width / 2, y - r.top]);
   return {layer:l, x:x, y:y, w:w, h:h, size:size, lines:lines};
 }
 function shapeLayer(comp, name) { var l = comp.layers.addShape(); l.name = name || 'shape'; return l; }
@@ -74,13 +76,14 @@ function easeProfile(name) {
 function easeArray(influence, dims) {
   var out = []; for (var i = 0; i < dims; i++) out.push(new KeyframeEase(0, influence)); return out;
 }
-function animate(prop, t0, t1, v0, v1, easing, opts) {
-  var dims = Array.isArray(v0) ? v0.length : 1, profile = easeProfile(easing || THEME.easing), free = easeArray(profile.out, dims);
+function animate(prop, t0, t1, v0, v1, easing) {
+  var dims = Array.isArray(v0) ? v0.length : 1, name = easing || THEME.easing, profile = easeProfile(name), free = easeArray(profile.out, dims);
+  var overshoot = name === 'pop' && prop.matchName === 'ADBE Scale' && Array.isArray(v1) && v1[0] > v0[0];
   prop.setValueAtTime(t0, v0); var k1 = prop.numKeys;
-  if (opts && opts.overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(112); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
+  if (overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(v1[i] * 1.12); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
   prop.setValueAtTime(t1, v1); var k2 = prop.numKeys, outEase = easeArray(profile.out, dims), inEase = easeArray(profile.in, dims);
   prop.setTemporalEaseAtKey(k1, free, outEase); prop.setTemporalEaseAtKey(k2, inEase, free);
-  if (opts && opts.overshoot) { var ko = k2 - 1; prop.setTemporalEaseAtKey(ko, outEase, inEase); }
+  if (overshoot) { var ko = k2 - 1; prop.setTemporalEaseAtKey(ko, outEase, inEase); }
 }
 function revealText(layer, t0, dur, easing) {
   var easingName = easing || THEME.easing;
@@ -93,5 +96,11 @@ function assertFonts(theme) {
 }
 function exitAll(comp, dur) { for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment !== 'bg') animate(l.transform.opacity, Math.max(0, dur - 0.3), dur, 100, 0, THEME.easing); } }
 function checkSafe(comp, t) {
-  for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment === 'bg' || l.comment === 'decor') continue; var r=l.sourceRectAtTime(t, false), p=l.transform.position.valueAtTime(t, false), a=l.transform.anchorPoint.valueAtTime(t, false), x0=p[0]-a[0]+r.left, x1=x0+r.width, y0=p[1]-a[1]+r.top, y1=y0+r.height; if (x0 < SAFE.x0-2 || x1 > SAFE.x1+2 || y0 < SAFE.y0-2 || y1 > SAFE.y1+2) throw new Error(l.name + ' outside safe area'); }
+  for (var i=1;i<=comp.numLayers;i++) {
+    var l=comp.layer(i); if (l.comment === 'bg' || l.comment === 'decor') continue;
+    var r=l.sourceRectAtTime(t, false), p=l.transform.position.valueAtTime(t, false), a=l.transform.anchorPoint.valueAtTime(t, false), sc=l.transform.scale.valueAtTime(t, false), rot=l.transform.rotation.valueAtTime(t, false) * Math.PI / 180, cs=Math.cos(rot), sn=Math.sin(rot);
+    var corners=[[r.left,r.top],[r.left+r.width,r.top],[r.left+r.width,r.top+r.height],[r.left,r.top+r.height]], x0=Infinity, x1=-Infinity, y0=Infinity, y1=-Infinity;
+    for (var j=0;j<corners.length;j++) { var dx=(corners[j][0]-a[0])*sc[0]/100, dy=(corners[j][1]-a[1])*sc[1]/100, xx=p[0]+dx*cs-dy*sn, yy=p[1]+dx*sn+dy*cs; x0=Math.min(x0,xx); x1=Math.max(x1,xx); y0=Math.min(y0,yy); y1=Math.max(y1,yy); }
+    if (x0 < SAFE.x0-2 || x1 > SAFE.x1+2 || y0 < SAFE.y0-2 || y1 > SAFE.y1+2) throw new Error(l.name + ' outside safe area');
+  }
 }

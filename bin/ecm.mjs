@@ -196,7 +196,9 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
       const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
       if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim()); return 1; }
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
-      if (Number(check.stdout.trim()) < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
+      const deviation = Number(check.stdout.trim());
+      if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim()}`); return 1; }
+      if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
     }
     const montage = spawnSync('magick', ['montage', '-font', '/System/Library/Fonts/Helvetica.ttc', ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
     if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim()); return 1; }
