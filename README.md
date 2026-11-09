@@ -1,43 +1,38 @@
-# EffectCraft Agent Skills Repository
+# effectcraft-motion
 
-Repository panduan dan skrip otomasi `effectcraft-cli` berbasis Agentic AI untuk pembuatan video Motion Graphics terintegrasi.
+Skill untuk mengubah spec JSON menjadi video motion graphics 9:16 berbentuk MP4 melalui `effectcraft-cli`. Pipeline ini memvalidasi scene, membuat project EffectCraft, menghasilkan contact sheet, lalu merender video.
 
-## 📁 Struktur Repository
+## Kebutuhan
 
-```
-effectcraft-skills-repository/
-├── README.md                          # Panduan penggunaan repository
-├── SKILLS.md                          # Dokumentasi utama System Prompt & aturan Motion Design Agent
-└── scripts/
-    ├── basic_motion/                  # Modul gerakan dasar & komposisi promo
-    │   ├── liquid-gradient-effectcraft.sh
-    │   ├── shape-repeater-effectcraft.sh
-    │   ├── product-promo-effectcraft.sh
-    │   ├── particle-reveal-effectcraft.sh
-    │   ├── kinetic-typography-effectcraft.sh
-    │   ├── frosted-glass-effectcraft.sh
-    │   └── master-motion-graphics.sh
-    ├── advanced_vfx/                  # Modul efek visual 3D & sinematik
-    │   ├── chrome-title-effectcraft.sh
-    │   ├── sketch-logo-effectcraft.sh
-    │   ├── infographics-slider-effectcraft.sh
-    │   ├── wireframe-3d-effectcraft.sh
-    │   ├── instagram-reels-effectcraft.sh
-    │   ├── complex-patterns-effectcraft.sh
-    │   └── master-all-techniques.sh
-    └── kinetic_typography/            # Modul animasi tipografi eksperimental
-        ├── stretch-typography-effectcraft.sh
-        ├── rolling-typography-effectcraft.sh
-        ├── liquid-typography-effectcraft.sh
-        ├── text-displacement-effectcraft.sh
-        ├── bulge-typography-effectcraft.sh
-        ├── circular-typography-effectcraft.sh
-        ├── trippy-typography-effectcraft.sh
-        └── master-typography-effects.sh
+- `effectcraft-cli`
+- Node.js ≥ 20
+- ImageMagick (`magick`)
+- `ffmpeg` dan `ffprobe`
+
+Pasang skill secara lokal:
+
+```sh
+ln -s "$PWD" ~/.claude/skills/effectcraft-motion
 ```
 
-## 🚀 Cara Menggunakan
+## Mulai cepat
 
-1. Extract file zip ini dan unggah folder `effectcraft-skills-repository` ke **Google Drive** Anda (atau push ke **GitHub**).
-2. Berikan `SKILLS.md` sebagai *System Prompt / Instruction* pada Agentic AI Anda.
-3. Jalankan skrip CLI individual atau gunakan skrip *Master Orchestrator* (`master-*.sh`) untuk mengeksekusi animasi secara berurutan di `effectcraft-cli`.
+```sh
+node bin/ecm.mjs check examples/hemat.json
+taskpolicy -b nice -n 19 node bin/ecm.mjs preview examples/hemat.json
+taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
+```
+
+`check` hanya memvalidasi dan menghitung durasi. `preview` membuat project serta contact sheet. `render` menulis MP4 di samping spec. Jalankan satu proses engine pada satu waktu.
+
+Referensi:
+
+- [Scene types](reference/scenes.md)
+- [Themes](reference/themes.md)
+- [CLI dan pitfall](reference/cli.md)
+
+Tes smoke lengkap memakai engine secara serial:
+
+```sh
+taskpolicy -b nice -n 19 bash test/smoke.sh
+```
