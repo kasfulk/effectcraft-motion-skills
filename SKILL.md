@@ -11,7 +11,7 @@ A JSON spec becomes a 1080×1920 30 fps MP4 with eased motion, theme fonts, safe
 
 ```bash
 E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
-node $E check   video.json                          # validate; per-scene seconds
+node $E check   video.json                          # validate; estimated seconds
 taskpolicy -b nice -n 19 node $E preview video.json # builds project + video.sheet.png
 # Read the sheet. Fix the spec, re-preview.
 taskpolicy -b nice -n 19 node $E render  video.json # ~1 min; last line = MP4 path

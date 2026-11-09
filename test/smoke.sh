@@ -53,6 +53,15 @@ node -e 'const v=JSON.parse(process.argv[1]).value;if(Math.abs(v-70)>=0.01)proce
 printf '%s\n' '{"theme":"reel","scenes":[{"type":"donut","value":72,"label":"x"}]}' > "$TMP/donut-opacity.json"
 node "$ROOT/bin/ecm.mjs" preview "$TMP/donut-opacity.json" >"$TMP/donut-opacity.out" 2>"$TMP/donut-opacity.err"
 test -f "$TMP/donut-opacity.sheet.png"
+printf '%s\n' '{"theme":"reel","scenes":[{"type":"stat","value":72},{"type":"donut","value":40}]}' > "$TMP/nolabel.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/nolabel.json" >"$TMP/nolabel.out" 2>"$TMP/nolabel.err"
+test -f "$TMP/nolabel.sheet.png"
+if ~/.local/bin/effectcraft-cli get S1_stat label text/sourceText --json "$TMP/nolabel.ecproj" >"$TMP/no-stat-label.out" 2>"$TMP/no-stat-label.err"; then
+  echo 'unexpected label layer in label-less stat scene' >&2; exit 1
+fi
+if ~/.local/bin/effectcraft-cli get S2_donut label text/sourceText --json "$TMP/nolabel.ecproj" >"$TMP/no-donut-label.out" 2>"$TMP/no-donut-label.err"; then
+  echo 'unexpected label layer in label-less donut scene' >&2; exit 1
+fi
 # 4 = track ring (label, value, progress ring, track ring, bg)
 donut_track=$(~/.local/bin/effectcraft-cli get S1_donut 4 transform/opacity --time 1.5 --json "$TMP/donut-opacity.ecproj")
 node -e 'const v=JSON.parse(process.argv[1]).value;if(Math.abs(v-30)>=0.01)process.exit(1)' "$donut_track"
@@ -125,12 +134,13 @@ set -e
 test "$status" -eq 1
 test ! -e "$LOCK"
 cp "$ROOT/examples/hemat.json" "$TMP/hemat.json"
+node -e 'const fs=require("fs"),p=process.argv[1],s=require(p);s.scenes.push({type:"stat",value:7});s.out="nested/hemat.mp4";fs.writeFileSync(p,JSON.stringify(s))' "$TMP/hemat.json"
 printf '%s\n' '{"theme":"reel","scenes":[{"type":"outro","text":"Done","cta":"Follow"}]}' > "$TMP/cta.json"
 node "$ROOT/bin/ecm.mjs" preview "$TMP/cta.json" >"$TMP/cta.out" 2>"$TMP/cta.err"
 cta_early=$(~/.local/bin/effectcraft-cli get S1_outro cta transform/opacity --time 0.3 --json "$TMP/cta.ecproj")
 cta_late=$(~/.local/bin/effectcraft-cli get S1_outro cta transform/opacity --time 1.4 --json "$TMP/cta.ecproj")
 node -e 'if(Math.abs(JSON.parse(process.argv[1]).value)>0.01||Math.abs(JSON.parse(process.argv[2]).value-100)>0.01)process.exit(1)' "$cta_early" "$cta_late"
-node "$ROOT/bin/ecm.mjs" render "$TMP/hemat.json" >"$TMP/render.out" 2>"$TMP/render.err"
+taskpolicy -b nice -n 19 node "$ROOT/bin/ecm.mjs" render "$TMP/hemat.json" >"$TMP/render.out" 2>"$TMP/render.err"
 mp4=$(tail -n 1 "$TMP/render.out")
 test -f "$mp4"
 total=$(grep '^total  ' "$TMP/render.out" | awk '{print $2}')

@@ -10,7 +10,7 @@
 node bin/ecm.mjs check examples/hemat.json
 ```
 
-Validates the JSON without starting EffectCraft. It prints one line per scene, such as `1  hook  2.67`, followed by `total  13.33`. Validation errors print to stderr and the command exits 1. Exact validation messages include:
+Validates the JSON without starting EffectCraft. It prints estimated seconds per scene, such as `1  hook  2.67`, followed by `total  13.33`. Validation errors print to stderr and the command exits 1. Exact validation messages include:
 
 - `spec: must be an object`
 - `theme: unknown "nope" (reel, pitch, infopop, kinetik, tenang, edukasi)`
@@ -21,7 +21,9 @@ Validates the JSON without starting EffectCraft. It prints one line per scene, s
 - `scene 1 (kinetic): lines must be 1–6 non-empty strings`
 - `scene 1 (stat): value must be a number`
 - `scene 1 (stat): value must be below 1e15`
+- `scene 1 (stat): label must be a string`
 - `scene 1 (bars): items must be 2–6 of {label, value ≥ 0}`
+- `scene 1 (bars): values must be below 1e15`
 - `scene 1 (bars): items need at least one value > 0`
 - `scene 1 (bars): highlight must be 0–1`
 - `scene 1 (donut): value must be 0–100`
@@ -32,6 +34,7 @@ Validates the JSON without starting EffectCraft. It prints one line per scene, s
 - `scene 1 (hook): bg must be base|ink|accent`
 - `scene 1 (hook): emphasis must be a non-empty string`
 - `scene 1 (hook): emphasis "turun" not found in text`
+- `scene 1 (kinetic): emphasis "x" not found in any line`
 
 ### `preview`
 
@@ -39,7 +42,7 @@ Validates the JSON without starting EffectCraft. It prints one line per scene, s
 node bin/ecm.mjs preview examples/hemat.json
 ```
 
-Validates, builds the EffectCraft project, renders one frame per scene, checks for blank frames, and writes a contact sheet next to the spec. It prints the sheet path. Exact pipeline errors include `effectcraft-cli failed to start`, `missing ECM output`, `scene 1 (hook): blank check failed: ...`, and `scene 1 (hook): renders blank at 2.5s`. Engine errors arrive as `file:line:col: message`; `ecm.mjs` strips the location and prints the message. Examples from the smoke cases include:
+Validates, builds the EffectCraft project, renders one frame per scene, checks for blank frames, and writes a contact sheet next to the spec. It deletes the old sheet first, then prints the sheet path. If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Exact pipeline errors include `missing ECM output`, `scene 1 (hook): blank check failed: ...`, and `scene 1 (hook): renders blank at 2.5s`. Engine errors arrive as `file:line:col: message`; `ecm.mjs` strips the location and prints the message. Examples from the smoke cases include:
 
 - `scene 1 (custom): font NoSuchFont-Bold is not installed`
 - `scene 1 (custom): SyntaxError`
@@ -62,7 +65,7 @@ Takes the render lock, runs the preview build and checks, writes the MP4, then p
 another render is running (remove /tmp/ecm-render.lock if not)
 ```
 
-Other exact errors include `effectcraft-cli failed to start`, the final engine error, and `missing ECM output`. A render always releases `/tmp/ecm-render.lock` on exit.
+If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Other exact errors include the final engine error and `missing ECM output`. `total` is the final length (matches the MP4); the `out` directory is created if missing. A render always releases `/tmp/ecm-render.lock` on exit.
 
 ## Machine safety
 

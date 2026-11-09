@@ -100,11 +100,11 @@ var SCENES = {
     var v = text(comp, finalValue, {font:theme.fonts.display, size:size, min:120, color:ink, align:'center', x:CX, y:820, maxW:850, maxH:400, name:'value'});
     v.layer.property('Source Text').expression = counterExpr(0.2, 1.4, scene.value, scene.prefix || '', scene.suffix || '');
     animate(v.layer.transform.scale, 0.2, 0.65, [0,0], [100,100], theme.easing);
-    var label = text(comp, scene.label, {font:theme.fonts.body, size:56, min:48, color:ink, align:'center', x:CX, y:v.y + v.h + 40, maxW:850, maxH:150, name:'label'});
+    var label = scene.label ? text(comp, scene.label, {font:theme.fonts.body, size:56, min:48, color:ink, align:'center', x:CX, y:v.y + v.h + 40, maxW:850, maxH:150, name:'label'}) : null;
     if (motif(theme, 'hardShadow')) shadow(v.layer, theme.colors.ink, 100, 135, 9, 0);
     if (motif(theme, 'softShadow')) shadow(v.layer, '#2b2a28', 16, 135, 7, 12);
-    animate(v.layer.opacity, 0.2, 0.65, 0, 100, theme.easing); animate(label.layer.opacity, 0.25, 0.65, 0, 100, theme.easing);
-    return Math.max(1.4, 0.65, 0.65);
+    animate(v.layer.opacity, 0.2, 0.65, 0, 100, theme.easing); if (label) animate(label.layer.opacity, 0.25, 0.65, 0, 100, theme.easing);
+    return 1.4;
   },
   bars: function (comp, theme, scene, dur) {
     var ink = textColor(theme, scene), top = contentTop(comp, theme, scene) + 30, base = 1250, maxH = Math.min(650, base - top), n = scene.items.length, gap = 36, strokeW = motif(theme, 'thin') ? 3 : 6, inset = (motif(theme, 'outline') || motif(theme, 'thin')) ? 26 : 0, chartW = 850 - inset, w = (chartW - gap * (n - 1)) / n, max = Math.max.apply(null, scene.items.map(function (it) { return it.value; })), settle = 0; // 26px keeps the engine's expanded stroke bounds within SAFE.
@@ -131,7 +131,7 @@ var SCENES = {
     progress.trim.property('Start').setValue(0); animate(progress.trim.property('End'), 0.2, 1.4, 0, scene.value, theme.easing);
     var v = text(comp, String(scene.value) + '%', {font:theme.fonts.display,size:150,min:96,color:ink,align:'center',x:CX,y:820,maxW:500,maxH:220,name:'value'});
     v.layer.property('Source Text').expression = counterExpr(0.2,1.4,scene.value,'','%');
-    text(comp, scene.label, {font:theme.fonts.body,size:48,min:36,color:ink,align:'center',x:CX,y:1190,maxW:850,maxH:140,name:'label'});
+    if (scene.label) { text(comp, scene.label, {font:theme.fonts.body,size:48,min:36,color:ink,align:'center',x:CX,y:1190,maxW:850,maxH:140,name:'label'}); }
     animate(v.layer.opacity,0.2,0.6,0,100,theme.easing); animate(v.layer.transform.scale,0.2,0.6,[0,0],[100,100],theme.easing);
     return 1.4;
   },

@@ -13,7 +13,7 @@
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `type` | yes | string | One of `hook`, `kinetic`, `stat`, `bars`, `donut`, `steps`, `compare`, `quote`, `outro`, `custom` | Unknown values produce `type unknown`. |
-| `title` | no | string | No validation limit | Used by scene layouts that support a title. |
+| `title` | no | string | String when present | Used by scene layouts that support a title. |
 | `bg` | no | string | `base`, `ink` or `accent` | Default is the theme base color. |
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
@@ -29,40 +29,40 @@
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `lines` | yes | string array | `1–6` non-empty strings | Lines enter one by one. |
-| `title` | no | string | No validation limit | Adds the scene title layout. |
-| `emphasis` | no | string | Must occur in the joined lines | Highlights matching text. |
+| `title` | no | string | String when present | Adds the scene title layout. |
+| `emphasis` | no | string | Must occur within one line | Highlights matching text. |
 
 ## `stat`
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `value` | yes | number | Finite; `|value| < 1e15` | Counts up with `fmtID`. |
-| `label` | no | string | No validation limit | Displayed below the value. |
-| `prefix` | no | string | No validation limit | Prepended to the formatted value. |
-| `suffix` | no | string | No validation limit | Appended to the formatted value. |
+| `label` | no | string | String when present | Displayed below the value. |
+| `prefix` | no | string | String when present | Prepended to the formatted value. |
+| `suffix` | no | string | String when present | Appended to the formatted value. |
 
 ## `bars`
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `items` | yes | object array | `2–6` of `{label, value ≥ 0}`; at least one value must be `> 0` | Bars use each item's value and label. |
-| `items[].value` | yes | number | Finite and `≥ 0` | Determines bar height and displayed number. |
+| `items[].value` | yes | number | Finite, `≥ 0`, `< 1e15` | Determines bar height and displayed number. |
 | `highlight` | no | integer | `0–<items.length>` | Highlighted bar gets the accent treatment. |
-| `title` | no | string | No validation limit |  |
+| `title` | no | string | String when present |  |
 
 ## `donut`
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `value` | yes | number | Finite, `0–100` | Percentage and trim-path amount. |
-| `label` | no | string | No validation limit | Displayed below the ring. |
+| `label` | no | string | String when present | Displayed below the ring. |
 
 ## `steps`
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `items` | yes | string array | `1–5` non-empty strings | Numbered list with staggered entrance. |
-| `title` | no | string | No validation limit |  |
+| `title` | no | string | String when present |  |
 
 ## `compare`
 
@@ -78,7 +78,7 @@
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `text` | yes | string | Non-empty string | Quote text. |
-| `source` | no | string | No validation limit | Optional attribution. |
+| `source` | no | string | String when present | Optional attribution. |
 | `emphasis` | no | string | See shared fields |  |
 | `bg`, `duration`, `title` | no | string / number | See shared fields | `title` is accepted but not used by the quote builder. |
 
@@ -87,7 +87,7 @@
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
 | `text` | yes | string | Non-empty string | Closing line. |
-| `cta` | no | string | No validation limit | Optional call to action. |
+| `cta` | no | string | String when present | Optional call to action. |
 | `emphasis` | no | string | See shared fields |  |
 | `bg`, `duration`, `title` | no | string / number | See shared fields | `title` is accepted but not used by the outro builder. |
 
@@ -130,4 +130,4 @@ Content must stay inside `SAFE` (`x 90–940`, `y 250–1450`). Layers with comm
 
 Without an explicit `duration`, `durationOf` computes `1.2 + 0.37 * words + 0.25 * dataItems`, clamps it to `2.5–7`, multiplies by the theme `durationScale`, and rounds to whole frames at 30 fps. Words include string fields except `type`, `bg`, `emphasis`, and `jsx`; `dataItems` is `items.length` for `bars` and `steps`, `lines.length` for `kinetic`, and the total point count for `compare`.
 
-The generated scene builder returns its settle time. The pipeline requires `settle + 1.5 s`, rounded up to a frame. If an explicit duration is too short, it throws `duration too short, needs ≥ Ns`. An automatic duration is extended to the required hold instead.
+The generated scene builder returns its settle time. The pipeline requires `settle + 1.5 s`, rounded up to a frame. If an explicit duration is too short, it throws `duration too short, needs ≥ Ns`. An automatic duration is extended to the required hold instead. `check` prints the estimate before this extension; `render` prints the final total, which matches the MP4.

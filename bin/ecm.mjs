@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from "node:fs";
-import { realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -37,6 +36,7 @@ function sceneErrors(s) {
       const ok = Array.isArray(s.items) && s.items.length >= 2 && s.items.length <= 6
         && s.items.every((i) => i && typeof i.label === "string" && Number.isFinite(i.value) && i.value >= 0);
       if (!ok) { e.push("items must be 2–6 of {label, value ≥ 0}"); break; }
+      if (s.items.some((i) => i.value >= 1e15)) e.push("values must be below 1e15");
       if (!s.items.some((i) => i.value > 0)) e.push("items need at least one value > 0");
       if (s.highlight !== undefined && !(Number.isInteger(s.highlight) && s.highlight >= 0 && s.highlight < s.items.length)) {
         e.push(`highlight must be 0–${s.items.length - 1}`);
@@ -58,11 +58,14 @@ function sceneErrors(s) {
   }
   if (s.duration !== undefined && !(Number.isFinite(s.duration) && s.duration >= 1 && s.duration <= 15)) e.push("duration must be 1–15");
   if (s.bg !== undefined && !["base", "ink", "accent"].includes(s.bg)) e.push("bg must be base|ink|accent");
-  const main = s.type === "kinetic" ? Array.isArray(s.lines) && s.lines.join(" ") : TEXT_TYPES.includes(s.type) && s.text;
-  if (s.emphasis !== undefined && typeof main === "string") {
+  for (const k of ["title", "label", "prefix", "suffix", "source", "cta"]) {
+    if (s[k] !== undefined && typeof s[k] !== "string") e.push(`${k} must be a string`);
+  }
+  const main = s.type === "kinetic" ? Array.isArray(s.lines) && s.lines : TEXT_TYPES.includes(s.type) && s.text;
+  if (s.emphasis !== undefined && (typeof main === "string" || Array.isArray(main))) {
     if (!str(s.emphasis)) e.push("emphasis must be a non-empty string");
-    else if (!main.toLowerCase().includes(s.emphasis.toLowerCase())) {
-      e.push(`emphasis "${s.emphasis}" not found in ${s.type === "kinetic" ? "lines" : "text"}`);
+    else if (Array.isArray(main) ? !main.some((line) => line.toLowerCase().includes(s.emphasis.toLowerCase())) : !main.toLowerCase().includes(s.emphasis.toLowerCase())) {
+      e.push(`emphasis "${s.emphasis}" not found in ${s.type === "kinetic" ? "any line" : "text"}`);
     }
   }
   return e;
@@ -203,18 +206,17 @@ function render(file) {
   process.once("SIGINT", () => onInterrupt(2));
   process.once("SIGTERM", () => onInterrupt(15));
   try {
-    const status = preview(file);
-    if (status !== 0) return status;
-    const spec = readSpec(file);
-    if (spec === undefined) return 1;
-    const { project } = paths(file), out = resolve(dirname(file), spec.out || `${basename(file, extname(file))}.mp4`);
+    const res = preview(file);
+    if (res.code !== 0) return res.code;
+    const spec = res.spec, { project } = paths(file), out = resolve(dirname(file), spec.out || `${basename(file, extname(file))}.mp4`);
+    mkdirSync(dirname(out), {recursive:true});
     const built = spawnSync("effectcraft-cli", ["render", "--project", project, "--comp", "Main", "--out", out, "--format", "h264"], { encoding: "utf8" });
     if (built.status !== 0) {
       const lines = (built.stderr || "").split(/\r?\n/).filter((line) => line.trim());
       console.error(lines.at(-1) || (built.stdout || "").trim() || built.error?.message || "effectcraft-cli failed to start");
       return 1;
     }
-    const theme = loadThemes()[spec.theme], total = totalDuration(sceneDurations(spec, theme));
+    const total = totalDuration(res.durs);
     console.log(`total  ${total.toFixed(2)}`);
     console.log(out);
     return 0;
@@ -226,10 +228,11 @@ function render(file) {
 }
 
 function preview(file) {
+  rmSync(paths(file).sheet, {force:true});
   const spec = readSpec(file);
-  if (spec === undefined) return 1;
+  if (spec === undefined) return {code:1};
   const themes = loadThemes(), errors = validate(spec, themes);
-  if (errors.length) { for (const m of errors) console.error(m); return 1; }
+  if (errors.length) { for (const m of errors) console.error(m); return {code:1}; }
   const theme = themes[spec.theme], durs = sceneDurations(spec, theme);
   const { project, sheet } = paths(file);
   const base = basename(file, extname(file));
@@ -237,25 +240,25 @@ function preview(file) {
   try {
     writeFileSync(tmp, buildScript(spec, theme, durs));
     const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
-    if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : ((built.stderr || built.stdout || '').trim() || built.error?.message || 'effectcraft-cli failed to start'); console.error(msg); return 1; }
+    if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : ((built.stderr || built.stdout || '').trim() || built.error?.message || 'effectcraft-cli failed to start'); console.error(msg); return {code:1}; }
     const line = `${built.stdout || ''}
 ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
-    if (!line) { console.error('missing ECM output'); return 1; }
+    if (!line) { console.error('missing ECM output'); return {code:1}; }
     const meta = JSON.parse(line.slice(4)), starts = [], frames = [], t = meta.settle, ds = meta.durs; let at = 0;
     for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dirname(tmp), `${i + 1}_${spec.scenes[i].type}.png`)); at += ds[i]; }
     for (let i = 0; i < frames.length; i++) {
       const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
-      if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim() || r.error?.message || 'effectcraft-cli failed to start'); return 1; }
+      if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim() || r.error?.message || 'effectcraft-cli failed to start'); return {code:1}; }
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
-      const deviation = Number(check.stdout.trim());
-      if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim()}`); return 1; }
+      const deviation = Number((check.stdout || '').trim());
+      if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim() || check.error?.message || 'magick failed'}`); return {code:1}; }
       if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
     }
     const montage = spawnSync('magick', ['montage', '-font', '/System/Library/Fonts/Helvetica.ttc', ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
-    if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim()); return 1; }
+    if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim() || montage.error?.message || 'magick montage failed'); return {code:1}; }
     for (const f of frames) rmSync(f, {force:true});
     console.log(sheet);
-    return 0;
+    return {code:0, spec, durs:meta.durs};
   } finally { rmSync(tmp, {force:true}); rmSync(dirname(tmp), {recursive:true, force:true}); }
 }
 
@@ -268,7 +271,7 @@ const isMain = () => {
 if (isMain()) {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === "check" && arg) process.exitCode = check(arg);
-  else if (cmd === "preview" && arg) process.exitCode = preview(arg);
+  else if (cmd === "preview" && arg) process.exitCode = preview(arg).code;
   else if (cmd === "render" && arg) process.exitCode = render(arg);
   else { console.error("usage: ecm.mjs <check|preview|render> <spec>"); process.exitCode = 1; }
 }
