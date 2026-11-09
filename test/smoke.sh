@@ -17,6 +17,11 @@ test -f "$base.ecproj"
 test -f "$base.sheet.png"
 text=$(~/.local/bin/effectcraft-cli get S1_hook text text/sourceText --json "$base.ecproj")
 [[ "$text" == *'Kata "kutip" \\ dan </script>'* ]]
+for theme in reel pitch infopop kinetik tenang edukasi; do
+  printf '%s\n' "{\"theme\":\"$theme\",\"scenes\":[{\"type\":\"hook\",\"text\":\"Theme $theme\"}]}" > "$TMP/$theme.json"
+  node "$ROOT/bin/ecm.mjs" preview "$TMP/$theme.json" >"$TMP/$theme.out" 2>"$TMP/$theme.err"
+  test -f "$TMP/$theme.sheet.png"
+done
 
 run_failure() {
   local jsx=$1 expected=$2
@@ -28,6 +33,7 @@ run_failure() {
   set -e
   test "$status" -eq 1
   grep -F "$expected" "$TMP/fail.err"
+  ! grep -F '.build.jsx' "$TMP/fail.err"
 }
 run_failure 'assertFonts({fonts:{display:"NoSuchFont-Bold"}})' 'scene 1 (custom): font NoSuchFont-Bold is not installed'
 run_failure 'return (;' 'scene 1 (custom): SyntaxError'

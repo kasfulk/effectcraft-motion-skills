@@ -68,15 +68,23 @@ function ring(comp, o) {
   var l = shapeLayer(comp, 'ring'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
   var p = c.addProperty('ADBE Vector Shape - Ellipse'); p.property('Size').setValue([o.d, o.d]); var st = c.addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(rgb(o.color || THEME.colors.ink)); st.property('Stroke Width').setValue(o.strokeW || 12); var trim = c.addProperty('ADBE Vector Filter - Trim'); l.transform.position.setValue([o.cx, o.cy]); return {layer:l, trim:trim};
 }
-function easeFor(name) { var i = name === 'calm' ? 60 : name === 'smooth' ? 30 : 0.1; var o = name === 'smooth' ? 75 : 90; return [new KeyframeEase(0, i), new KeyframeEase(0, o)]; }
-function animate(prop, t0, t1, v0, v1, easing) {
-  prop.setValueAtTime(t0, v0); var k1 = prop.numKeys; prop.setValueAtTime(t1, v1); var k2 = prop.numKeys, e = easeFor(easing || THEME.easing);
-  prop.setTemporalEaseAtKey(k1, e, e); prop.setTemporalEaseAtKey(k2, e, e);
-  if (easing === 'pop' && prop === prop.propertyGroup(1).transform.scale) { var k = prop.setValueAtTime(t0 + 0.7 * (t1 - t0), [112,112]); prop.setTemporalEaseAtKey(k, e, e); }
+function easeProfile(name) {
+  return name === 'calm' ? {out:60, in:60} : name === 'smooth' ? {out:30, in:75} : {out:0.1, in:90};
+}
+function easeArray(influence, dims) {
+  var out = []; for (var i = 0; i < dims; i++) out.push(new KeyframeEase(0, influence)); return out;
+}
+function animate(prop, t0, t1, v0, v1, easing, opts) {
+  var dims = Array.isArray(v0) ? v0.length : 1, profile = easeProfile(easing || THEME.easing), free = easeArray(profile.out, dims);
+  prop.setValueAtTime(t0, v0); var k1 = prop.numKeys;
+  if (opts && opts.overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(112); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
+  prop.setValueAtTime(t1, v1); var k2 = prop.numKeys, outEase = easeArray(profile.out, dims), inEase = easeArray(profile.in, dims);
+  prop.setTemporalEaseAtKey(k1, free, outEase); prop.setTemporalEaseAtKey(k2, inEase, free);
+  if (opts && opts.overshoot) { var ko = k2 - 1; prop.setTemporalEaseAtKey(ko, outEase, inEase); }
 }
 function revealText(layer, t0, dur, easing) {
   var easingName = easing || THEME.easing;
-  var a = layer.property('Text').property('Animators').addProperty('ADBE Text Animator'), op = a.property('Properties').addProperty('ADBE Text Opacity'), po = a.property('Properties').addProperty('ADBE Text Position 3D'); op.setValue(-100); po.setValue([0,60,0]); var s = a.property('Selectors').addProperty('ADBE Text Selector'); s.property('Advanced').property('Units').setValue(2); s.property('Start').setValue(0); s.property('End').setValue(100); var off = s.property('Offset'); off.setValueAtTime(t0, 0); var k0 = off.numKeys; off.setValueAtTime(t0 + dur, 100); var k1 = off.numKeys, e = easeFor(easingName); off.setTemporalEaseAtKey(k0, e, e); off.setTemporalEaseAtKey(k1, e, e); return layer;
+  var a = layer.property('Text').property('Animators').addProperty('ADBE Text Animator'), op = a.property('Properties').addProperty('ADBE Text Opacity'), po = a.property('Properties').addProperty('ADBE Text Position 3D'); op.setValue(-100); po.setValue([0,60,0]); var s = a.property('Selectors').addProperty('ADBE Text Selector'); s.property('Start').setValue(0); s.property('End').setValue(100); var off = s.property('Offset'); off.setValueAtTime(t0, 0); var k0 = off.numKeys; off.setValueAtTime(t0 + dur, 100); var k1 = off.numKeys, profile = easeProfile(easingName), e = easeArray(profile.out, 1), ei = easeArray(profile.in, 1); off.setTemporalEaseAtKey(k0, e, e); off.setTemporalEaseAtKey(k1, ei, e); return layer;
 }
 function colorRange(layer, start, end, hex) { var a = layer.property('Text').property('Animators').addProperty('ADBE Text Animator'), f = a.property('Properties').addProperty('ADBE Text Fill Color'); f.setValue(rgb(hex)); var s = a.property('Selectors').addProperty('ADBE Text Selector'); s.property('Advanced').property('Units').setValue(2); s.property('Start').setValue(start); s.property('End').setValue(end); return a; }
 function assertFonts(theme) {

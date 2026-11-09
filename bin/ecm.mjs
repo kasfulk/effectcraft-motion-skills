@@ -124,7 +124,9 @@ const MAIN = String.raw`
         if (typeof entered !== 'number') entered = 0.6 * dur;
       } else if (SCENES[type]) entered = SCENES[type](c, THEME, scene, dur);
       else throw new Error('unsupported scene type');
-      if (type === 'custom' && c.numLayers <= 1) throw new Error('renders blank');
+      var hasContent = false;
+      for (var li = 1; li <= c.numLayers; li++) if (c.layer(li).comment !== 'bg') { hasContent = true; break; }
+      if (!hasContent) throw new Error('renders blank');
       checkSafe(c, entered);
     } catch (e) {
       var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
@@ -132,7 +134,7 @@ const MAIN = String.raw`
     }
     var need = ceilFrame(entered + 1.5);
     if (need > dur) {
-      if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need + 's');
+      if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need.toFixed(2) + 's');
       dur = need; c.duration = dur; finalDurs[i] = dur;
     }
     exitAll(c, dur); pre.push(c); starts.push(at); settle.push(entered); at += dur;
@@ -184,19 +186,19 @@ function preview(file) {
   try {
     writeFileSync(tmp, buildScript(spec, theme, durs));
     const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
-    if (built.status !== 0) { const msg = (built.stderr || built.stdout || '').replace(/^.*?:\d+:\d+: /, '').trim(); console.error(msg); return 1; }
+    if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = (lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : (built.stderr || built.stdout || '').trim()); console.error(msg); return 1; }
     const line = `${built.stdout || ''}
 ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
     if (!line) { console.error('missing ECM output'); return 1; }
     const meta = JSON.parse(line.slice(4)), starts = [], frames = [], t = meta.settle, ds = meta.durs; let at = 0;
-    for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dir, `${base}.scene-${i + 1}.png`)); at += ds[i]; }
+    for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dirname(tmp), `${i + 1}_${spec.scenes[i].type}.png`)); at += ds[i]; }
     for (let i = 0; i < frames.length; i++) {
       const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
       if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim()); return 1; }
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
       if (Number(check.stdout.trim()) < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return 1; }
     }
-    const montage = spawnSync('magick', ['montage', ...frames, '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
+    const montage = spawnSync('magick', ['montage', '-font', '/System/Library/Fonts/Helvetica.ttc', ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
     if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim()); return 1; }
     for (const f of frames) rmSync(f, {force:true});
     console.log(sheet);
