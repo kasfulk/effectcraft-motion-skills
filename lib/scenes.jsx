@@ -20,12 +20,14 @@ function title(comp, theme, scene, n) {
   var label = String(n < 10 ? '0' + n : n) + '  ' + String(scene.title);
   var lineLabel = motif(theme, 'lineLabel'), x = lineLabel ? SAFE.x0 : CX;
   if (lineLabel) {
-    rect(comp, {x:SAFE.x0, y:300, w:130, h:4, fill:theme.colors.muted, origin:'left', comment:'decor'});
-    var l = text(comp, label, {font:theme.fonts.label, size:36, min:36, color:theme.colors.muted, x:x, y:320, maxW:SAFE.x1-SAFE.x0, maxH:100, name:'title'});
+    var lineColor = !scene.bg || scene.bg === 'base' ? theme.colors.muted : textColor(theme, scene);
+    rect(comp, {x:SAFE.x0, y:300, w:130, h:4, fill:lineColor, origin:'left', comment:'decor'});
+    var l = text(comp, label, {font:theme.fonts.label, size:36, min:36, color:lineColor, x:x, y:320, maxW:SAFE.x1-SAFE.x0, maxH:100, name:'title'});
+    if (scene.bg && scene.bg !== 'base') l.layer.transform.opacity.setValue(70);
     return {bottom:l.y + l.h};
   }
   var centered = theme.align === 'center';
-  var t = text(comp, scene.title, {font:theme.fonts.display, size:84, min:56, color:theme.colors.ink, align:centered ? 'center' : 'left', x:centered ? CX : SAFE.x0, y:300, maxW:SAFE.x1-SAFE.x0, maxH:180, name:'title'});
+  var t = text(comp, scene.title, {font:theme.fonts.display, size:84, min:56, color:textColor(theme, scene), align:centered ? 'center' : 'left', x:centered ? CX : SAFE.x0, y:300, maxW:SAFE.x1-SAFE.x0, maxH:180, name:'title'});
   return {bottom:t.y + t.h};
 }
 function addGlow(comp, theme, cx, cy, dur) {
@@ -160,10 +162,9 @@ var SCENES = {
         } else if (motif(theme, 'square')) {
           badge = rect(comp, {x:bx,y:by,w:96,h:96,fill:filled ? theme.colors.accent : null,stroke:filled && !outline ? null : theme.colors.ink,strokeW:motif(theme, 'thin') ? 3 : 4,radius:0,origin:'center',name:'step-badge'});
         } else {
-          badge = ellipse(comp, {cx:bx,cy:by,d:96,fill:filled ? theme.colors.accent : null,stroke:filled ? null : theme.colors.ink,strokeW:3,name:'step-badge'});
+          badge = ellipse(comp, {cx:bx,cy:by,d:96,fill:filled ? theme.colors.accent : null,stroke:(!filled || outline) ? theme.colors.ink : null,strokeW:motif(theme, 'thin') ? 3 : 4,name:'step-badge'});
         }
         if (badge) {
-          if (outline) { badge = badge; }
           animate(badge.transform.scale, at, at + 0.35, [0,0], [100,100], theme.easing);
           if (motif(theme, 'hardShadow')) shadow(badge, theme.colors.ink, 100, 135, 9, 0);
           if (motif(theme, 'softShadow')) shadow(badge, '#2b2a28', 16, 135, 7, 12);

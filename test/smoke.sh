@@ -45,6 +45,9 @@ grep -F 'scene 1 (steps): text too long' "$TMP/too-long-steps.err"
 printf '%s\n' '{"theme":"reel","scenes":[{"type":"compare","bg":"ink","left":{"title":"Before","points":["One","Two","Three"]},"right":{"title":"After","points":["Four","Five","Six"]}}]}' > "$TMP/compare-ink.json"
 node "$ROOT/bin/ecm.mjs" preview "$TMP/compare-ink.json" >"$TMP/compare-ink.out" 2>"$TMP/compare-ink.err"
 test -f "$TMP/compare-ink.sheet.png"
+printf '%s\n' '{"theme":"pitch","scenes":[{"type":"steps","title":"Judul","items":["a","b"],"bg":"ink"}]}' > "$TMP/steps-ink-title.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/steps-ink-title.json" >"$TMP/steps-ink-title.out" 2>"$TMP/steps-ink-title.err"
+test -f "$TMP/steps-ink-title.sheet.png"
 set +e
 node "$ROOT/bin/ecm.mjs" preview "$TMP/too-long.json" >"$TMP/too-long.out" 2>"$TMP/too-long.err"
 status=$?

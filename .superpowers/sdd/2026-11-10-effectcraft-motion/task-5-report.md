@@ -21,3 +21,8 @@
 
 ## Concerns
 - No remaining concerns observed in smoke or required visual sheets.
+
+## Fix round 1
+- Added ink strokes to outline circle badges and removed the no-op badge assignment.
+- Made titled scenes derive title and line-label colors from the scene background; non-base line labels use 70% opacity.
+- Added smoke coverage for a pitch steps scene with `bg:"ink"` and title.
