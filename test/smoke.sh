@@ -48,6 +48,14 @@ test -f "$TMP/compare-ink.sheet.png"
 printf '%s\n' '{"theme":"pitch","scenes":[{"type":"steps","title":"Judul","items":["a","b"],"bg":"ink"}]}' > "$TMP/steps-ink-title.json"
 node "$ROOT/bin/ecm.mjs" preview "$TMP/steps-ink-title.json" >"$TMP/steps-ink-title.out" 2>"$TMP/steps-ink-title.err"
 test -f "$TMP/steps-ink-title.sheet.png"
+steps_title=$(~/.local/bin/effectcraft-cli get S1_steps title transform/opacity --time 1.5 --json "$TMP/steps-ink-title.ecproj")
+node -e 'const v=JSON.parse(process.argv[1]).value;if(Math.abs(v-70)>=0.01)process.exit(1)' "$steps_title"
+printf '%s\n' '{"theme":"reel","scenes":[{"type":"donut","value":72,"label":"x"}]}' > "$TMP/donut-opacity.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/donut-opacity.json" >"$TMP/donut-opacity.out" 2>"$TMP/donut-opacity.err"
+test -f "$TMP/donut-opacity.sheet.png"
+# 4 = track ring (label, value, progress ring, track ring, bg)
+donut_track=$(~/.local/bin/effectcraft-cli get S1_donut 4 transform/opacity --time 1.5 --json "$TMP/donut-opacity.ecproj")
+node -e 'const v=JSON.parse(process.argv[1]).value;if(Math.abs(v-30)>=0.01)process.exit(1)' "$donut_track"
 set +e
 node "$ROOT/bin/ecm.mjs" preview "$TMP/too-long.json" >"$TMP/too-long.out" 2>"$TMP/too-long.err"
 status=$?
