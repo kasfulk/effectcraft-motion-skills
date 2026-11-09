@@ -18,10 +18,18 @@ test -f "$base.sheet.png"
 text=$(~/.local/bin/effectcraft-cli get S1_hook text text/sourceText --json "$base.ecproj")
 [[ "$text" == *'Kata "kutip" \\ dan </script>'* ]]
 for theme in reel pitch infopop kinetik tenang edukasi; do
-  printf '%s\n' "{\"theme\":\"$theme\",\"scenes\":[{\"type\":\"hook\",\"text\":\"Theme $theme\"}]}" > "$TMP/$theme.json"
-  node "$ROOT/bin/ecm.mjs" preview "$TMP/$theme.json" >"$TMP/$theme.out" 2>"$TMP/$theme.err"
-  test -f "$TMP/$theme.sheet.png"
+  node -e 'const s=require(process.argv[1]);s.theme=process.argv[2];require("fs").writeFileSync(process.argv[3],JSON.stringify(s))' "$ROOT/examples/all-scenes.json" "$theme" "$TMP/all-$theme.json"
+  node "$ROOT/bin/ecm.mjs" preview "$TMP/all-$theme.json" >"$TMP/$theme.out" 2>"$TMP/$theme.err"
+  test -f "$TMP/all-$theme.sheet.png"
 done
+long=$(printf 'panjangsekali%.0s ' {1..80})
+printf '%s\n' "{\"theme\":\"reel\",\"scenes\":[{\"type\":\"hook\",\"text\":\"$long\"}]}" > "$TMP/too-long.json"
+set +e
+node "$ROOT/bin/ecm.mjs" preview "$TMP/too-long.json" >"$TMP/too-long.out" 2>"$TMP/too-long.err"
+status=$?
+set -e
+test "$status" -eq 1
+grep -F 'scene 1 (hook): text too long' "$TMP/too-long.err"
 
 run_failure() {
   local jsx=$1 expected=$2
