@@ -59,8 +59,8 @@ function rect(comp, o) {
   var p = c.addProperty('ADBE Vector Shape - Rect'); p.property('Size').setValue([o.w, o.h]);
   var pos = o.origin === 'bottom' ? [0, -o.h/2] : o.origin === 'left' ? [o.w/2, 0] : o.origin === 'topLeft' ? [o.w/2, o.h/2] : [0,0]; p.property('Position').setValue(pos);
   if (o.radius) p.property('Roundness').setValue(o.radius);
+  if (o.fill) { var f = c.addProperty('ADBE Vector Graphic - Fill'); f.property('Color').setValue(rgb(o.fill)); }
   if (o.stroke) { var st = c.addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(rgb(o.stroke)); st.property('Stroke Width').setValue(o.strokeW || 2); }
-  else { var f = c.addProperty('ADBE Vector Graphic - Fill'); f.property('Color').setValue(rgb(o.fill || THEME.colors.ink)); }
   l.transform.position.setValue([o.x, o.y]); l.comment = o.comment || '';
   return l;
 }

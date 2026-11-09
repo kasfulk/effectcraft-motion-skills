@@ -21,7 +21,8 @@ function title(comp, theme, scene, n) {
     var l = text(comp, label, {font:theme.fonts.label, size:36, min:36, color:theme.colors.muted, x:x, y:320, maxW:SAFE.x1-SAFE.x0, maxH:100, name:'title'});
     return {bottom:l.y + l.h};
   }
-  var t = text(comp, scene.title, {font:theme.fonts.display, size:84, min:56, color:theme.colors.ink, align:'center', x:CX, y:300, maxW:SAFE.x1-SAFE.x0, maxH:180, name:'title'});
+  var centered = theme.align === 'center';
+  var t = text(comp, scene.title, {font:theme.fonts.display, size:84, min:56, color:theme.colors.ink, align:centered ? 'center' : 'left', x:centered ? CX : SAFE.x0, y:300, maxW:SAFE.x1-SAFE.x0, maxH:180, name:'title'});
   return {bottom:t.y + t.h};
 }
 function addGlow(comp, theme, cx, cy, dur) {
@@ -38,12 +39,15 @@ function markEmphasis(comp, theme, res, scene, revealEnd) {
   if (!scene.emphasis || scene.bg === 'accent') return;
   var box = wordBox(res, scene.emphasis);
   if (motif(theme, 'highlighter')) {
-    var hl = rect(comp, {x:box.x + box.w / 2 - 18, y:box.y + box.h / 2, w:box.w + 36, h:box.h + 36, fill:theme.colors.marker || theme.colors.accent, stroke:theme.colors.ink, strokeW:6, radius:14, origin:'center', comment:'decor', name:'highlighter'});
+    var hl = rect(comp, {x:box.x + box.w / 2, y:box.y + box.h / 2, w:box.w + 36, h:box.h + 36, fill:theme.colors.marker || theme.colors.accent, stroke:theme.colors.ink, strokeW:6, radius:14, origin:'center', comment:'decor', name:'highlighter'});
     hl.transform.rotation.setValue(-2.3); hl.moveAfter(res.layer); hl.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(hl.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], theme.easing);
   } else if (motif(theme, 'underline')) {
     var u = rect(comp, {x:box.x, y:box.y + box.h + 10, w:box.w, h:14, fill:theme.colors.accent, origin:'left', name:'underline'});
     u.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(u.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], theme.easing);
-  } else colorRange(res.layer, emphasisIndex(scene.text, scene.emphasis), emphasisIndex(scene.text, scene.emphasis) + scene.emphasis.length, theme.colors.accent);
+  } else {
+    var emphColor = motif(theme, 'underline') ? theme.colors.accent : theme.colors.accent;
+    colorRange(res.layer, emphasisIndex(scene.text, scene.emphasis), emphasisIndex(scene.text, scene.emphasis) + scene.emphasis.length, emphColor);
+  }
 }
 function textColor(theme, scene) { return onColor(theme, theme.colors[scene.bg || 'base']); }
 var SCENES = {
@@ -62,7 +66,7 @@ var SCENES = {
     max = Math.max(64, Math.min(120, Math.floor(120 * 850 / widest)));
     var res = [], settle = 0;
     for (i = 0; i < n; i++) {
-      var y = tx + i * (max * 1.12 + 16), r = text(comp, scene.lines[i], {font:theme.fonts.display, size:max, min:64, color:textColor(theme, scene), align:align, x:align === 'center' ? CX : SAFE.x0, y:y, maxW:850, maxH:max*1.3, name:'line' + (i + 1)});
+      var y = tx + i * (max * 1.12 + 36), r = text(comp, scene.lines[i], {font:theme.fonts.display, size:max, min:64, color:textColor(theme, scene), align:align, x:align === 'center' ? CX : SAFE.x0, y:y, maxW:850, maxH:max*1.3, name:'line' + (i + 1)});
       var at = 0.15 + 0.35 * i, p = r.layer.transform.position.value; animate(r.layer.transform.position, at, at + 0.45, [p[0], p[1] + 60], [p[0], p[1]], theme.easing); animate(r.layer.transform.opacity, at, at + 0.45, 0, 100, theme.easing); res.push(r); settle = at + 0.45;
       if (scene.emphasis) { var joined = scene.lines[i], ei = emphasisIndex(joined, scene.emphasis); if (ei >= 0) { if (motif(theme, 'underline') || motif(theme, 'highlighter')) markEmphasis(comp, theme, r, {emphasis:scene.emphasis, text:joined, bg:scene.bg}, settle); else colorRange(r.layer, ei, ei + scene.emphasis.length, theme.colors.accent); } }
     }
@@ -72,14 +76,14 @@ var SCENES = {
     var ink = textColor(theme, scene), q = text(comp, '“', {font:theme.fonts.display, size:300, min:300, color:theme.colors.accent, align:'center', x:CX, y:270, maxW:850, maxH:340, name:'quote-mark'}); q.layer.comment = 'decor';
     var res = text(comp, scene.text, {font:theme.fonts.quote || theme.fonts.display, size:96, min:56, color:motif(theme, 'slab') ? theme.colors.base : ink, align:'center', x:CX, y:600, maxW:820, maxH:550, name:'text'});
     slab(comp, theme, res.y, res.h, dur);
-    if (scene.source) text(comp, '— ' + scene.source, {font:theme.fonts.label, size:36, min:36, color:theme.colors.muted, align:'center', x:CX, y:res.y + res.h + 30, maxW:820, maxH:80, name:'source'});
+    if (scene.source) { var sourceY = res.y + res.h + (motif(theme, 'slab') ? 80 : 30), sourceColor = motif(theme, 'slab') ? theme.colors.muted : ink; text(comp, '— ' + scene.source, {font:theme.fonts.label, size:36, min:36, color:sourceColor, align:'center', x:CX, y:sourceY, maxW:820, maxH:80, name:'source'}); }
     revealText(res.layer, 0.15, 0.9, theme.easing); return 1.05;
   },
   outro: function (comp, theme, scene, dur) {
     var ink = textColor(theme, scene), res = text(comp, scene.text, {font:theme.fonts.display, size:120, min:64, color:motif(theme, 'slab') ? theme.colors.base : ink, align:'center', x:CX, y:700, maxW:850, maxH:500, name:'text'});
     slab(comp, theme, res.y, res.h, dur); addGlow(comp, theme, CX, res.y + res.h / 2, dur);
     revealText(res.layer, 0.15, 0.6, theme.easing); var settle = 0.75;
-    if (scene.cta) { var cta = text(comp, scene.cta, {font:theme.fonts.body, size:52, min:48, color:onColor(theme, theme.colors.accent), align:'center', x:CX, y:res.y + res.h + 80, maxW:780, maxH:100, name:'cta'}), pill = rect(comp, {x:CX, y:cta.y + cta.h / 2, w:cta.w + 60, h:cta.h + 32, fill:theme.colors.accent, radius:(cta.h + 32) / 2, origin:'center', name:'cta-pill'}); pill.moveAfter(cta.layer); pill.transform.scale.setValueAtTime(settle, [0,0]); animate(pill.transform.scale, settle, settle + 0.4, [0,0], [100,100], theme.easing); }
+    if (scene.cta) { var pillFill = scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent, pillText = onColor(theme, pillFill), pillGap = motif(theme, 'slab') ? 40 : 0, cta = text(comp, scene.cta, {font:theme.fonts.body, size:52, min:48, color:pillText, align:'center', x:CX, y:res.y + res.h + 80 + pillGap, maxW:780, maxH:100, name:'cta'}), pill = rect(comp, {x:CX, y:cta.y + cta.h / 2, w:cta.w + 60, h:cta.h + 32, fill:pillFill, radius:(cta.h + 32) / 2, origin:'center', name:'cta-pill'}); pill.moveAfter(cta.layer); pill.transform.scale.setValueAtTime(settle, [0,0]); animate(pill.transform.scale, settle, settle + 0.4, [0,0], [100,100], theme.easing); }
     markEmphasis(comp, theme, res, scene, settle); return settle + 0.4;
   }
 };
