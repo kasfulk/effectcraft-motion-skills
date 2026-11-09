@@ -1,5 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, symlinkSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadThemes, validate, durationOf, buildScript } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
@@ -25,9 +29,20 @@ test("errors", () => {
   assert.deepEqual(v([{type:"hook", text:"Hai", bg:"red"}]), ["scene 1 (hook): bg must be base|ink|accent"]);
 });
 test("script embeds hostile text safely", () => {
-  const text = 'a "q" \\ b\n</script>\u2028end';
+  const text = 'a "q" \\ b\n</script>\u2028\u2029end';
   const src = buildScript({theme:"reel", scenes:[{type:"hook", text}]}, reel, [3]);
   const line = src.split("\n")[0];                         // var SPEC = {...};
-  assert.ok(!src.includes("\u2028"));
+  assert.ok(!src.includes("\u2028") && !src.includes("\u2029"));
   assert.equal(new Function(line + " return SPEC;")().scenes[0].text, text);
+});
+test("CLI runs through a symlinked install", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ecm-"));
+  try {
+    symlinkSync(new URL("..", import.meta.url).pathname, join(dir, "link"));
+    const spec = join(dir, "bad.json");
+    writeFileSync(spec, JSON.stringify({theme:"reel", scenes:[{type:"donut", value:120}]}));
+    const r = spawnSync(process.execPath, [join(dir, "link/bin/ecm.mjs"), "check", spec], {encoding:"utf8"});
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("scene 1 (donut): value must be 0–100"), r.stderr);
+  } finally { rmSync(dir, {recursive:true, force:true}); }
 });

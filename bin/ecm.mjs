@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom"];
@@ -135,7 +135,13 @@ function check(file) {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Node resolves symlinks in import.meta.url but not in argv[1]; the skill is installed via symlink.
+const isMain = () => {
+  try { return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
+  catch { return false; }
+};
+
+if (isMain()) {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === "check" && arg) process.exitCode = check(arg);
   else { console.error("usage: ecm.mjs check <spec>"); process.exitCode = 1; }
