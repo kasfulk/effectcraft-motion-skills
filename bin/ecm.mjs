@@ -175,12 +175,12 @@ function totalDuration(durs) {
 
 function readSpec(file) {
   try { return JSON.parse(readFileSync(file, "utf8")); }
-  catch (err) { console.error(`${file}: ${err.message}`); return null; }
+  catch (err) { console.error(`${file}: ${err.message}`); return undefined; }
 }
 
 function check(file) {
   const spec = readSpec(file);
-  if (!spec) return 1;
+  if (spec === undefined) return 1;
   const themes = loadThemes();
   const errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
@@ -206,12 +206,12 @@ function render(file) {
     const status = preview(file);
     if (status !== 0) return status;
     const spec = readSpec(file);
-    if (!spec) return 1;
+    if (spec === undefined) return 1;
     const { project } = paths(file), out = resolve(dirname(file), spec.out || `${basename(file, extname(file))}.mp4`);
     const built = spawnSync("effectcraft-cli", ["render", "--project", project, "--comp", "Main", "--out", out, "--format", "h264"], { encoding: "utf8" });
     if (built.status !== 0) {
       const lines = (built.stderr || "").split(/\r?\n/).filter((line) => line.trim());
-      console.error(lines.at(-1) || (built.stdout || "").trim());
+      console.error(lines.at(-1) || (built.stdout || "").trim() || built.error?.message || "effectcraft-cli failed to start");
       return 1;
     }
     const theme = loadThemes()[spec.theme], total = totalDuration(sceneDurations(spec, theme));
@@ -227,7 +227,7 @@ function render(file) {
 
 function preview(file) {
   const spec = readSpec(file);
-  if (!spec) return 1;
+  if (spec === undefined) return 1;
   const themes = loadThemes(), errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
   const theme = themes[spec.theme], durs = sceneDurations(spec, theme);
@@ -237,7 +237,7 @@ function preview(file) {
   try {
     writeFileSync(tmp, buildScript(spec, theme, durs));
     const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
-    if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = (lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : (built.stderr || built.stdout || '').trim()); console.error(msg); return 1; }
+    if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : ((built.stderr || built.stdout || '').trim() || built.error?.message || 'effectcraft-cli failed to start'); console.error(msg); return 1; }
     const line = `${built.stdout || ''}
 ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
     if (!line) { console.error('missing ECM output'); return 1; }
@@ -245,7 +245,7 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
     for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dirname(tmp), `${i + 1}_${spec.scenes[i].type}.png`)); at += ds[i]; }
     for (let i = 0; i < frames.length; i++) {
       const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
-      if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim()); return 1; }
+      if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim() || r.error?.message || 'effectcraft-cli failed to start'); return 1; }
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
       const deviation = Number(check.stdout.trim());
       if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim()}`); return 1; }

@@ -97,9 +97,11 @@ run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent});
 if pgrep -fl effectcraft-cli; then exit 1; fi
 
 LOCK=/tmp/ecm-render.lock
-trap 'rm -rf "$TMP" "$LOCK"' EXIT
-rm -rf "$LOCK"
+own_lock=0
+trap 'if [ "$own_lock" -eq 1 ]; then rm -rf "$LOCK"; fi; rm -rf "$TMP"' EXIT
+if [ -e "$LOCK" ]; then echo 'render lock held; finish or remove /tmp/ecm-render.lock first' >&2; exit 1; fi
 mkdir "$LOCK"
+own_lock=1
 set +e
 node "$ROOT/bin/ecm.mjs" render "$ROOT/examples/hemat.json" >"$TMP/locked.out" 2>"$TMP/locked.err"
 status=$?
@@ -107,7 +109,27 @@ set -e
 test "$status" -eq 1
 grep -F 'another render is running' "$TMP/locked.err"
 rmdir "$LOCK"
+own_lock=0
+printf '%s\n' 'null' > "$TMP/null.json"
+set +e
+node "$ROOT/bin/ecm.mjs" check "$TMP/null.json" >"$TMP/null.out" 2>"$TMP/null.err"
+status=$?
+set -e
+test "$status" -eq 1
+grep -F 'spec: must be an object' "$TMP/null.err"
+printf '%s\n' '{"theme":"nope","scenes":[]}' > "$TMP/invalid-render.json"
+set +e
+node "$ROOT/bin/ecm.mjs" render "$TMP/invalid-render.json" >"$TMP/invalid-render.out" 2>"$TMP/invalid-render.err"
+status=$?
+set -e
+test "$status" -eq 1
+test ! -e "$LOCK"
 cp "$ROOT/examples/hemat.json" "$TMP/hemat.json"
+printf '%s\n' '{"theme":"reel","scenes":[{"type":"outro","text":"Done","cta":"Follow"}]}' > "$TMP/cta.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/cta.json" >"$TMP/cta.out" 2>"$TMP/cta.err"
+cta_early=$(~/.local/bin/effectcraft-cli get S1_outro cta transform/opacity --time 0.3 --json "$TMP/cta.ecproj")
+cta_late=$(~/.local/bin/effectcraft-cli get S1_outro cta transform/opacity --time 1.4 --json "$TMP/cta.ecproj")
+node -e 'if(Math.abs(JSON.parse(process.argv[1]).value)>0.01||Math.abs(JSON.parse(process.argv[2]).value-100)>0.01)process.exit(1)' "$cta_early" "$cta_late"
 node "$ROOT/bin/ecm.mjs" render "$TMP/hemat.json" >"$TMP/render.out" 2>"$TMP/render.err"
 mp4=$(tail -n 1 "$TMP/render.out")
 test -f "$mp4"
