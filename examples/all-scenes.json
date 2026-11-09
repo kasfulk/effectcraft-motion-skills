@@ -1,0 +1,9 @@
+{
+  "theme": "reel",
+  "scenes": [
+    {"type":"hook","text":"Ubah cara melihat uang","emphasis":"uang"},
+    {"type":"kinetic","title":"Kebiasaan kecil","lines":["Catat.","Sisihkan.","Tumbuh."],"emphasis":"sisihkan"},
+    {"type":"quote","text":"Yang terukur lebih mudah diperbaiki.","source":"Catatan harian"},
+    {"type":"outro","text":"Mulai dari hari ini.","cta":"Simpan untuk nanti"}
+  ]
+}

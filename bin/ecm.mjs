@@ -114,6 +114,7 @@ const MAIN = String.raw`
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
+    SCENE_N = i + 1;
     var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur, 30);
     bgFor(c, THEME, scene.bg);
     var entered = 0;

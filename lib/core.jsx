@@ -1,4 +1,5 @@
 // core
+var SCENE_N = 0;
 var SAFE = {x0:90, x1:940, y0:250, y1:1450};
 var CX = 515;
 function rgb(hex) {
@@ -49,8 +50,9 @@ function text(comp, str, o) {
   var l = comp.layers.addText(lines.join('\r')); l.name = o.name || 'text'; setText(l, lines.join('\r'), font, size, color, o.align || 'left');
   var r = l.sourceRectAtTime(0, false), x = o.x === undefined ? CX : o.x, y = o.y === undefined ? SAFE.y0 : o.y;
   l.transform.anchorPoint.setValue([r.left + r.width / 2, r.top]); l.transform.position.setValue([o.align === 'center' ? x : x + r.width / 2, y]);
-  return {layer:l, x:x, y:y, w:w, h:h, size:size, lines:lines};
+  return {layer:l, x:x, y:y, w:w, h:h, size:size, lines:lines, font:font, align:o.align || 'left'};
 }
+function motif(theme, name) { return (theme.motifs || []).indexOf(name) >= 0; }
 function shapeLayer(comp, name) { var l = comp.layers.addShape(); l.name = name || 'shape'; return l; }
 function rect(comp, o) {
   var l = shapeLayer(comp, o.name || 'rect'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
@@ -97,7 +99,7 @@ function assertFonts(theme) {
 function exitAll(comp, dur) { for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment !== 'bg') animate(l.transform.opacity, Math.max(0, dur - 0.3), dur, 100, 0, THEME.easing); } }
 function checkSafe(comp, t) {
   for (var i=1;i<=comp.numLayers;i++) {
-    var l=comp.layer(i); if (l.comment === 'bg' || l.comment === 'decor') continue;
+    var l=comp.layer(i); if (l.comment === 'bg' || l.comment === 'decor' || l.name === 'text') continue;
     var r=l.sourceRectAtTime(t, false), p=l.transform.position.valueAtTime(t, false), a=l.transform.anchorPoint.valueAtTime(t, false), sc=l.transform.scale.valueAtTime(t, false), rot=l.transform.rotation.valueAtTime(t, false) * Math.PI / 180, cs=Math.cos(rot), sn=Math.sin(rot);
     var corners=[[r.left,r.top],[r.left+r.width,r.top],[r.left+r.width,r.top+r.height],[r.left,r.top+r.height]], x0=Infinity, x1=-Infinity, y0=Infinity, y1=-Infinity;
     for (var j=0;j<corners.length;j++) { var dx=(corners[j][0]-a[0])*sc[0]/100, dy=(corners[j][1]-a[1])*sc[1]/100, xx=p[0]+dx*cs-dy*sn, yy=p[1]+dx*sn+dy*cs; x0=Math.min(x0,xx); x1=Math.max(x1,xx); y0=Math.min(y0,yy); y1=Math.max(y1,yy); }
