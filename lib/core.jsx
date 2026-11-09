@@ -48,7 +48,7 @@ function text(comp, str, o) {
   }
   var l = comp.layers.addText(lines.join('\r')); l.name = o.name || 'text'; setText(l, lines.join('\r'), font, size, color, o.align || 'left');
   var r = l.sourceRectAtTime(0, false), x = o.x === undefined ? CX : o.x, y = o.y === undefined ? SAFE.y0 : o.y;
-  l.transform.anchorPoint.setValue([r.left + r.width / 2, r.top]); l.transform.position.setValue([o.align === 'center' ? x : x + r.width / 2, y - r.top]);
+  l.transform.anchorPoint.setValue([r.left + r.width / 2, r.top]); l.transform.position.setValue([o.align === 'center' ? x : x + r.width / 2, y]);
   return {layer:l, x:x, y:y, w:w, h:h, size:size, lines:lines};
 }
 function shapeLayer(comp, name) { var l = comp.layers.addShape(); l.name = name || 'shape'; return l; }

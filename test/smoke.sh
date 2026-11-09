@@ -42,9 +42,14 @@ run_failure 'rect(comp,{x:1000,y:850,w:200,h:200,fill:theme.colors.accent});' 's
 run_success() {
   local jsx=$1 spec="$TMP/success-$RANDOM.json"
   printf '%s\n' "{\"theme\":\"reel\",\"scenes\":[{\"type\":\"custom\",\"jsx\":$(node -e 'process.stdout.write(JSON.stringify(process.argv[1]))' "$jsx")}]}" > "$spec"
+  set +e
   node "$ROOT/bin/ecm.mjs" preview "$spec" >"$TMP/success.out" 2>"$TMP/success.err"
+  local status=$?
+  set -e
+  if [ "$status" -ne 0 ]; then cat "$TMP/success.err" >&2; return "$status"; fi
 }
 run_success 'var t=text(comp,"one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour twentyfive twentysix twentyseven twentyeight twentynine thirty thirtyone thirtytwo thirtythree thirtyfour thirtyfive thirtysix thirtyseven thirtyeight thirtynine",{size:300,min:48,maxW:850,maxH:1200}); t.layer.comment="decor";'
+run_success 'var t=text(comp,"Halo",{size:120,x:CX,y:600,align:"center"}),r=t.layer.sourceRectAtTime(0,false),a=t.layer.transform.anchorPoint.value,p=t.layer.transform.position.value,top=p[1]-a[1]+r.top;if(Math.abs(top-600)>2)throw new Error("text top "+top);var q=text(comp,"Halo",{size:120,x:SAFE.x0,y:600,align:"left"}),s=q.layer.sourceRectAtTime(0,false),b=q.layer.transform.anchorPoint.value,c=q.layer.transform.position.value,left=c[0]-b[0]+s.left;if(Math.abs(left-SAFE.x0)>2)throw new Error("text left "+left);'
 run_failure 'text(comp,"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",{size:300,min:48,maxW:850,maxH:1200});' 'scene 1 (custom): text too long'
 run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent}); r.transform.scale.setValue([250,250]);' 'scene 1 (custom): rect outside safe area'
 
