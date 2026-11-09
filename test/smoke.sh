@@ -95,3 +95,25 @@ run_failure 'text(comp,"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent}); r.transform.scale.setValue([250,250]);' 'scene 1 (custom): rect outside safe area'
 
 if pgrep -fl effectcraft-cli; then exit 1; fi
+
+LOCK=/tmp/ecm-render.lock
+trap 'rm -rf "$TMP" "$LOCK"' EXIT
+rm -rf "$LOCK"
+mkdir "$LOCK"
+set +e
+node "$ROOT/bin/ecm.mjs" render "$ROOT/examples/hemat.json" >"$TMP/locked.out" 2>"$TMP/locked.err"
+status=$?
+set -e
+test "$status" -eq 1
+grep -F 'another render is running' "$TMP/locked.err"
+rmdir "$LOCK"
+cp "$ROOT/examples/hemat.json" "$TMP/hemat.json"
+node "$ROOT/bin/ecm.mjs" render "$TMP/hemat.json" >"$TMP/render.out" 2>"$TMP/render.err"
+mp4=$(tail -n 1 "$TMP/render.out")
+test -f "$mp4"
+total=$(grep '^total  ' "$TMP/render.out" | awk '{print $2}')
+probe=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -of csv=p=0 "$mp4")
+test "$probe" = '1080,1920,30/1'
+duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$mp4")
+node -e 'if(Math.abs(Number(process.argv[1])-Number(process.argv[2]))>0.05)process.exit(1)' "$duration" "$total"
+test ! -e "$LOCK"

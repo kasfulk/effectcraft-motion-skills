@@ -28,6 +28,7 @@ test("errors", () => {
   assert.deepEqual(v([{type:"bars", items:[{label:"a",value:1},{label:"b",value:2}], highlight:2}]), ["scene 1 (bars): highlight must be 0–1"]);
   assert.deepEqual(v([{type:"hook", text:"Gaji naik", emphasis:"turun"}]), ["scene 1 (hook): emphasis \"turun\" not found in text"]);
   assert.deepEqual(v([{type:"hook", text:"Hai", bg:"red"}]), ["scene 1 (hook): bg must be base|ink|accent"]);
+  assert.deepEqual(validate({theme:"reel", out:"clip.mov", scenes:[{type:"hook", text:"Hai"}]}, T), ["out: must be a .mp4 path"]);
 });
 test("script embeds hostile text safely", () => {
   const text = 'a "q" \\ b\n</script>\u2028\u2029end';

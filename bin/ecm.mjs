@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from "node:fs";
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, extname, join } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom"];
 
 const FPS = 30;
+const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
 const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx"]);
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -71,6 +72,7 @@ export function validate(spec, themes) {
   if (!spec || typeof spec !== "object") return ["spec: must be an object"];
   const errors = [];
   if (!Object.hasOwn(themes, spec.theme)) errors.push(`theme: unknown ${JSON.stringify(spec.theme)} (${Object.keys(themes).join(", ")})`);
+  if (spec.out !== undefined && !(typeof spec.out === "string" && spec.out.trim() !== "" && spec.out.endsWith(".mp4"))) errors.push("out: must be a .mp4 path");
   if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) {
     errors.push("scenes: must be a non-empty array");
     return errors;
@@ -158,32 +160,79 @@ export function buildScript(spec, theme, durs) {
   ].join("\n");
 }
 
+function paths(file) {
+  const dir = dirname(file), base = basename(file, extname(file));
+  return { project: join(dir, base + ".ecproj"), sheet: join(dir, base + ".sheet.png") };
+}
+
+function sceneDurations(spec, theme) {
+  return spec.scenes.map((s) => durationOf(s, theme));
+}
+
+function totalDuration(durs) {
+  return durs.reduce((sum, d) => sum + d, 0);
+}
+
+function readSpec(file) {
+  try { return JSON.parse(readFileSync(file, "utf8")); }
+  catch (err) { console.error(`${file}: ${err.message}`); return null; }
+}
+
 function check(file) {
-  let spec;
-  try { spec = JSON.parse(readFileSync(file, "utf8")); }
-  catch (err) { console.error(`${file}: ${err.message}`); return 1; }
+  const spec = readSpec(file);
+  if (!spec) return 1;
   const themes = loadThemes();
   const errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
   const theme = themes[spec.theme];
-  let total = 0;
-  spec.scenes.forEach((s, i) => {
-    const d = durationOf(s, theme);
-    total += d;
-    console.log(`${i + 1}  ${s.type}  ${d.toFixed(2)}`);
-  });
-  console.log(`total  ${total.toFixed(2)}`);
+  const durs = sceneDurations(spec, theme);
+  durs.forEach((d, i) => console.log(`${i + 1}  ${spec.scenes[i].type}  ${d.toFixed(2)}`));
+  console.log(`total  ${totalDuration(durs).toFixed(2)}`);
   return 0;
 }
 
+function render(file) {
+  try { mkdirSync(RENDER_LOCK); }
+  catch (err) {
+    if (err.code === "EEXIST") { console.error("another render is running (remove /tmp/ecm-render.lock if not)"); return 1; }
+    console.error(err.message);
+    return 1;
+  }
+  const release = () => rmSync(RENDER_LOCK, { recursive: true, force: true });
+  const onInterrupt = (code) => { release(); process.exit(128 + code); };
+  process.once("SIGINT", () => onInterrupt(2));
+  process.once("SIGTERM", () => onInterrupt(15));
+  try {
+    const status = preview(file);
+    if (status !== 0) return status;
+    const spec = readSpec(file);
+    if (!spec) return 1;
+    const { project } = paths(file), out = resolve(dirname(file), spec.out || `${basename(file, extname(file))}.mp4`);
+    const built = spawnSync("effectcraft-cli", ["render", "--project", project, "--comp", "Main", "--out", out, "--format", "h264"], { encoding: "utf8" });
+    if (built.status !== 0) {
+      const lines = (built.stderr || "").split(/\r?\n/).filter((line) => line.trim());
+      console.error(lines.at(-1) || (built.stdout || "").trim());
+      return 1;
+    }
+    const theme = loadThemes()[spec.theme], total = totalDuration(sceneDurations(spec, theme));
+    console.log(`total  ${total.toFixed(2)}`);
+    console.log(out);
+    return 0;
+  } finally {
+    release();
+    process.removeAllListeners("SIGINT");
+    process.removeAllListeners("SIGTERM");
+  }
+}
+
 function preview(file) {
-  let spec;
-  try { spec = JSON.parse(readFileSync(file, "utf8")); }
-  catch (err) { console.error(`${file}: ${err.message}`); return 1; }
+  const spec = readSpec(file);
+  if (!spec) return 1;
   const themes = loadThemes(), errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
-  const theme = themes[spec.theme], durs = spec.scenes.map((s) => durationOf(s, theme));
-  const dir = dirname(file), base = basename(file, extname(file)), project = join(dir, base + '.ecproj'), sheet = join(dir, base + '.sheet.png');
+  const theme = themes[spec.theme], durs = sceneDurations(spec, theme);
+  const { project, sheet } = paths(file);
+  const base = basename(file, extname(file));
   const tmp = join(mkdtempSync(join(tmpdir(), 'ecm-')), base + '.build.jsx');
   try {
     writeFileSync(tmp, buildScript(spec, theme, durs));
@@ -220,5 +269,6 @@ if (isMain()) {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === "check" && arg) process.exitCode = check(arg);
   else if (cmd === "preview" && arg) process.exitCode = preview(arg);
-  else { console.error("usage: ecm.mjs <check|preview> <spec>"); process.exitCode = 1; }
+  else if (cmd === "render" && arg) process.exitCode = render(arg);
+  else { console.error("usage: ecm.mjs <check|preview|render> <spec>"); process.exitCode = 1; }
 }
