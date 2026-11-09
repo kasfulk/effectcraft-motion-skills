@@ -34,6 +34,17 @@ for counter in '4|Rp 1.250.000' '5|2,5 jt'; do
 done
 long=$(printf 'panjangsekali%.0s ' {1..80})
 printf '%s\n' "{\"theme\":\"reel\",\"scenes\":[{\"type\":\"hook\",\"text\":\"$long\"}]}" > "$TMP/too-long.json"
+steps_long=$(printf 'kata%.0s ' {1..60})
+printf '%s\n' "{\"theme\":\"reel\",\"scenes\":[{\"type\":\"steps\",\"items\":[\"$steps_long\"]}]}" > "$TMP/too-long-steps.json"
+set +e
+node "$ROOT/bin/ecm.mjs" preview "$TMP/too-long-steps.json" >"$TMP/too-long-steps.out" 2>"$TMP/too-long-steps.err"
+status=$?
+set -e
+test "$status" -eq 1
+grep -F 'scene 1 (steps): text too long' "$TMP/too-long-steps.err"
+printf '%s\n' '{"theme":"reel","scenes":[{"type":"compare","bg":"ink","left":{"title":"Before","points":["One","Two","Three"]},"right":{"title":"After","points":["Four","Five","Six"]}}]}' > "$TMP/compare-ink.json"
+node "$ROOT/bin/ecm.mjs" preview "$TMP/compare-ink.json" >"$TMP/compare-ink.out" 2>"$TMP/compare-ink.err"
+test -f "$TMP/compare-ink.sheet.png"
 set +e
 node "$ROOT/bin/ecm.mjs" preview "$TMP/too-long.json" >"$TMP/too-long.out" 2>"$TMP/too-long.err"
 status=$?

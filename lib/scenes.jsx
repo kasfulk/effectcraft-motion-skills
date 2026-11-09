@@ -133,6 +133,89 @@ var SCENES = {
     animate(v.layer.opacity,0.2,0.6,0,100,theme.easing); animate(v.layer.transform.scale,0.2,0.6,[0,0],[100,100],theme.easing);
     return 1.4;
   },
+  steps: function (comp, theme, scene, dur) {
+    var ink = textColor(theme, scene), top = contentTop(comp, theme, scene), n = scene.items.length;
+    var rowH = Math.min(200, (1400 - top) / n), settle = 0;
+    scene.items.forEach(function (item, i) {
+      var center = top + rowH * i + rowH / 2, at = 0.3 + 0.07 * i, end = at + 0.45;
+      var badge, filled = !motif(theme, 'thin'), outline = motif(theme, 'outline');
+      if (motif(theme, 'slab')) {
+        // Content bar stays inside SAFE; unlike decor it participates in the scene bounds.
+        badge = null;
+        var bar = rect(comp, {x:515,y:center,w:850,h:rowH - 24,fill:theme.colors.ink,radius:0,origin:'center',name:'step-bar'});
+        animate(bar.transform.position, at, end, [bar.transform.position.value[0] - 60, bar.transform.position.value[1]], [515, center], theme.easing);
+        animate(bar.transform.opacity, at, end, 0, 100, theme.easing);
+        if (motif(theme, 'hardShadow')) shadow(bar, theme.colors.ink, 100, 135, 9, 0);
+        if (motif(theme, 'softShadow')) shadow(bar, '#2b2a28', 16, 135, 7, 12);
+        var sn = text(comp, String(i + 1), {font:theme.fonts.display,size:52,min:52,color:theme.colors.accent,align:'center',x:SAFE.x0 + 56,y:center - 29,maxW:96,maxH:70,name:'step-number'});
+        animate(sn.layer.opacity, at, end, 0, 100, theme.easing);
+        animate(sn.layer.transform.scale, at, at + 0.35, [0,0], [100,100], theme.easing);
+      } else {
+        var bx = SAFE.x0 + 56, by = center;
+        if (motif(theme, 'tag')) {
+          badge = rect(comp, {x:bx,y:by,w:96,h:96,fill:theme.colors.accent,radius:0,origin:'center',name:'step-badge'});
+          badge.transform.rotation.setValue(-4);
+          var pin = ellipse(comp, {cx:bx,cy:by - 48,d:14,fill:theme.colors.ink,name:'step-pin'});
+          animate(pin.transform.scale, at, at + 0.35, [0,0], [100,100], theme.easing);
+        } else if (motif(theme, 'square')) {
+          badge = rect(comp, {x:bx,y:by,w:96,h:96,fill:filled ? theme.colors.accent : null,stroke:filled && !outline ? null : theme.colors.ink,strokeW:motif(theme, 'thin') ? 3 : 4,radius:0,origin:'center',name:'step-badge'});
+        } else {
+          badge = ellipse(comp, {cx:bx,cy:by,d:96,fill:filled ? theme.colors.accent : null,stroke:filled ? null : theme.colors.ink,strokeW:3,name:'step-badge'});
+        }
+        if (badge) {
+          if (outline) { badge = badge; }
+          animate(badge.transform.scale, at, at + 0.35, [0,0], [100,100], theme.easing);
+          if (motif(theme, 'hardShadow')) shadow(badge, theme.colors.ink, 100, 135, 9, 0);
+          if (motif(theme, 'softShadow')) shadow(badge, '#2b2a28', 16, 135, 7, 12);
+        }
+        var numColor = filled ? onColor(theme, theme.colors.accent) : ink;
+        var num = text(comp, String(i + 1), {font:theme.fonts.display,size:52,min:52,color:numColor,align:'center',x:bx,y:center - 29,maxW:96,maxH:70,name:'step-number'});
+        animate(num.layer.opacity, at, end, 0, 100, theme.easing);
+        animate(num.layer.transform.scale, at, at + 0.35, [0,0], [100,100], theme.easing);
+      }
+      var itemColor = motif(theme, 'slab') ? theme.colors.base : ink;
+      var itemRes = text(comp, item, {font:theme.fonts.body,size:60,min:48,color:itemColor,x:SAFE.x0 + 140,y:center,maxW:710,maxH:rowH - 24,name:'step-item'});
+      var itemPos = itemRes.layer.transform.position.value;
+      itemRes.layer.transform.position.setValue([itemPos[0], center - itemRes.h / 2]);
+      itemRes.y = center - itemRes.h / 2;
+      animate(itemRes.layer.transform.position, at, end, [itemPos[0] - 60, itemRes.y], [itemPos[0], itemRes.y], theme.easing);
+      animate(itemRes.layer.transform.opacity, at, end, 0, 100, theme.easing);
+      settle = Math.max(settle, end, at + 0.35);
+    });
+    return settle;
+  },
+  compare: function (comp, theme, scene, dur) {
+    var ink = textColor(theme, scene), fill = scene.bg === 'accent' ? theme.colors.ink : theme.colors.accent;
+    var cardW = (SAFE.x1 - SAFE.x0) - 26, cardX = CX; // 13px inset keeps stroked card bounds inside SAFE.
+    var cards = [{data:scene.left, top:300, from:-120}, {data:scene.right, top:880, from:120}], settle = 0;
+    cards.forEach(function (cardInfo, ci) {
+      var cardTop = cardInfo.top, cardBottom = cardTop + 520, at = ci ? 0.45 : 0.2, cardEnd = at + 0.45;
+      var card = rect(comp, {x:cardX,y:cardTop + 260,w:cardW,h:520,fill:ci ? fill : null,stroke:ci ? null : ink,strokeW:4,radius:motif(theme, 'square') ? 0 : 18,origin:'center',name:ci ? 'right-card' : 'left-card'});
+      if (motif(theme, 'hardShadow')) shadow(card, theme.colors.ink, 100, 135, 9, 0);
+      if (motif(theme, 'softShadow')) shadow(card, '#2b2a28', 16, 135, 7, 12);
+      var cardPos = card.transform.position.value;
+      animate(card.transform.position, at, cardEnd, [cardPos[0] + cardInfo.from, cardPos[1]], [cardPos[0], cardPos[1]], theme.easing);
+      animate(card.transform.opacity, at, cardEnd, 0, 100, theme.easing);
+      var titleRes = text(comp, cardInfo.data.title, {font:theme.fonts.display,size:72,min:56,color:ci ? onColor(theme, fill) : ink,x:SAFE.x0 + 40,y:cardTop + 40,maxW:770,maxH:180,name:ci ? 'right-title' : 'left-title'});
+      var titlePos = titleRes.layer.transform.position.value;
+      animate(titleRes.layer.transform.position, at, cardEnd, [titlePos[0] + cardInfo.from, titlePos[1]], [titlePos[0], titlePos[1]], theme.easing);
+      animate(titleRes.layer.opacity, at, cardEnd, 0, 100, theme.easing);
+      var pointColor = ci ? onColor(theme, fill) : ink, pointY = titleRes.y + titleRes.h + 16;
+      cardInfo.data.points.forEach(function (point, pi) {
+        var p = text(comp, '• ' + point, {font:theme.fonts.body,size:52,min:48,color:pointColor,x:SAFE.x0 + 40,y:pointY,maxW:770,maxH:cardBottom - pointY - 40,name:(ci ? 'right-point-' : 'left-point-') + (pi + 1)});
+        var pp = p.layer.transform.position.value, pointAt = cardEnd + 0.07 * pi, pointEnd = pointAt + 0.3;
+        animate(p.layer.transform.position, at, cardEnd, [pp[0] + cardInfo.from, pp[1]], [pp[0], pp[1]], theme.easing);
+        p.layer.opacity.setValueAtTime(at, 0); p.layer.opacity.setValueAtTime(pointAt, 0); p.layer.opacity.setValueAtTime(pointEnd, 100);
+        pointY += p.h + 16; settle = Math.max(settle, pointEnd);
+      });
+      settle = Math.max(settle, cardEnd);
+    });
+    var vs = ellipse(comp, {cx:CX,cy:850,d:120,fill:ink,name:'vs-badge'});
+    var vsText = text(comp, 'VS', {font:theme.fonts.display,size:44,min:44,color:theme.colors[scene.bg || 'base'],align:'center',x:CX,y:826,maxW:120,maxH:70,name:'vs-text'});
+    animate(vs.transform.scale, 0.7, 1.05, [0,0], [100,100], theme.easing); animate(vs.transform.opacity, 0.7, 1.05, 0, 100, theme.easing);
+    animate(vsText.layer.transform.scale, 0.7, 1.05, [0,0], [100,100], theme.easing); animate(vsText.layer.opacity, 0.7, 1.05, 0, 100, theme.easing);
+    return Math.max(settle, 1.05);
+  },
   outro: function (comp, theme, scene, dur) {
     var ink = textColor(theme, scene), res = text(comp, scene.text, {font:theme.fonts.display, size:120, min:64, color:motif(theme, 'slab') ? theme.colors.base : ink, align:'center', x:CX, y:700, maxW:850, maxH:500, name:'text'});
     slab(comp, theme, res.y, res.h, dur); var glowEnd = addGlow(comp, theme, CX, res.y + res.h / 2, dur);

@@ -8,6 +8,8 @@
     {"type":"stat","value":2.5,"suffix":" jt","label":"kenaikan tabungan tahunan"},
     {"type":"bars","title":"Tabungan per bulan","items":[{"label":"Jan","value":1.2},{"label":"Feb","value":1.8},{"label":"Mar","value":1.4},{"label":"Apr","value":2.4},{"label":"Mei","value":1.7},{"label":"Jun","value":2.1}],"highlight":3},
     {"type":"donut","value":72,"label":"target tabungan tercapai"},
+    {"type":"steps","title":"Mulai dari sini","items":["Catat pengeluaran","Sisihkan 10%","Otomatiskan"]},
+    {"type":"compare","left":{"title":"Tanpa catatan","points":["Uang habis tanpa jejak","Tabungan sisa","Sering kaget"]},"right":{"title":"Dengan catatan","points":["Tahu arah uang","Tabungan duluan","Lebih tenang"]}},
     {"type":"outro","text":"Mulai dari hari ini.","cta":"Simpan untuk nanti","bg":"accent"}
   ]
 }

@@ -76,7 +76,11 @@ function rect(comp, o) {
 }
 function ellipse(comp, o) {
   var l = shapeLayer(comp, o.name || 'ellipse'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
-  var p = c.addProperty('ADBE Vector Shape - Ellipse'); p.property('Size').setValue([o.d, o.d]); var f = c.addProperty('ADBE Vector Graphic - Fill'); f.property('Color').setValue(rgb(o.fill || THEME.colors.ink)); l.transform.position.setValue([o.cx, o.cy]); l.comment = o.comment || ''; return l;
+  var p = c.addProperty('ADBE Vector Shape - Ellipse'); p.property('Size').setValue([o.d, o.d]);
+  if (o.fill) { var f = c.addProperty('ADBE Vector Graphic - Fill'); f.property('Color').setValue(rgb(o.fill)); }
+  if (o.stroke) { var st = c.addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(rgb(o.stroke)); st.property('Stroke Width').setValue(o.strokeW || 2); }
+  if (!o.fill && !o.stroke) { var fallback = c.addProperty('ADBE Vector Graphic - Fill'); fallback.property('Color').setValue(rgb(THEME.colors.ink)); }
+  l.transform.position.setValue([o.cx, o.cy]); l.comment = o.comment || ''; return l;
 }
 function ring(comp, o) {
   var l = shapeLayer(comp, 'ring'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
