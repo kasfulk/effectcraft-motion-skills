@@ -111,7 +111,7 @@ function assertFonts(theme) {
   var def = measure('Hamburgefonstiv 0123', '', 100);
   for (var k in theme.fonts) { var n = theme.fonts[k], got = measure('Hamburgefonstiv 0123', n, 100); if (Math.abs(got - def) <= 0.5) throw new Error('font ' + n + ' is not installed'); }
 }
-function exitAll(comp, dur) { for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment !== 'bg') animate(l.transform.opacity, Math.max(0, dur - 0.3), dur, 100, 0, THEME.easing); } }
+function exitAll(comp, dur) { for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment !== 'bg') { var o = l.transform.opacity, t = Math.max(0, dur - 0.3), v0 = o.numKeys === 0 ? o.value : (typeof o.valueAtTime === 'function' ? o.valueAtTime(t, false) : o.keyValue(o.numKeys)); animate(o, t, dur, v0, 0, THEME.easing); } } }
 function checkSafe(comp, t) {
   for (var i=1;i<=comp.numLayers;i++) {
     var l=comp.layer(i); if (l.comment === 'bg' || l.comment === 'decor' || l.name === 'text') continue;
