@@ -29,7 +29,8 @@ The original state is preserved in git commit `57144a5`.
   `setTemporalEaseAtKey`, expressions on Source Text (live counters), `sourceRectAtTime` (real text width).
 - The JSX sandbox cannot read files outside the project folder → the spec and library must be
   **inlined into one generated script**.
-- An unknown font name is silently substituted (no error) → fonts must be checked against `text.fonts`.
+- An unknown font name is silently substituted (no error), and `text.fonts` lists families, not PostScript names →
+  fonts are verified by a width probe inside the generated JSX (see Error handling).
 - `render-frame --max-side 480` ≈ 6–20 ms/frame; full 4 s 1080×1920 h264 render ≈ 1 s.
 - `ffmpeg`, `magick`, `node` v24 are installed.
 
@@ -106,8 +107,10 @@ Each scene owns its entrance and a 0.3 s exit at its end; hard cut to the next s
 
 ### Validation (before any CLI call)
 
-Unknown `type`, missing required field, empty `items`, donut `value` outside 0–100, `highlight` out of
-range, unknown theme or `bg` → exit 1 with `scene N (type): <field> <problem>`.
+Unknown `type`, missing required field, item counts outside limits (kinetic 1–6 lines, bars 2–6 items,
+steps 1–5 items, compare ≤4 points per side), bars with every value 0, donut `value` outside 0–100,
+`highlight` out of range, `emphasis` not in the scene text, unknown theme or `bg` → exit 1 with
+`scene N (type): <field> <problem>`.
 
 ## Themes (v1)
 
@@ -118,9 +121,9 @@ Tokens derived from `~/Clipper/template/themes/satsetmotion-styles.json`; satset
 |---|---|---|---|---|
 | `reel` | `#f2efe8` / `#111111` / `#e63323`; `#ffd400` numbers only | HelveticaNeue-CondensedBlack | `snap` | Square color blocks slide in from edges, left-aligned, no shadow |
 | `pitch` | `#f6f5f1` / `#16171c` / `#2b59ff` | Inter-ExtraBold + JetBrainsMono labels (`01  IDE`) | `smooth` | Thin lines drawn with trim paths; accent fills at alpha 0.14 |
-| `infopop` | `#fff6e6` / `#1d2340` / `#ffd23f` (+ `#1fc2a7`, `#ff8a3d`) | Montserrat-ExtraBold | `pop` | 6 px outline, hard shadow offset 9 px, tilted highlighter behind keyword, centered |
+| `infopop` | `#fff6e6` / `#1d2340` / `#ff8a3d` (marker `#ffd23f`, data `#1fc2a7`) | Montserrat-ExtraBold | `pop` | 6 px outline, hard shadow offset 9 px, tilted highlighter behind keyword, centered |
 | `kinetik` | `#0b1416` / `#e6f4f1` / `#ffb000` | DINCondensed-Bold | `snap` | Left-aligned stacked phrases, accent underline that extends |
-| `tenang` | `#eef0e6` / `#2f4a3a` / `#d9734e` | AvenirNext-Medium; quotes PlayfairDisplay-Bold | `calm` (×1.2 duration) | Lots of empty space, soft glow behind accent |
+| `tenang` | `#eef0e6` / `#2f4a3a` / `#d9734e` | AvenirNext-Medium; quotes PlayfairDisplayRoman-Bold | `calm` (×1.2 duration) | Lots of empty space, soft glow behind accent |
 | `edukasi` | kraft `#d9b98c` + cream sheet `#fbf6ea` / `#26355d` / `#f07a5a` | AvenirNext-Bold | `pop` | Paper cutouts without outline, soft shadow, paper tag with coral pin |
 
 `bg` variants: `base` = theme base + ink text; `ink` = ink background + base text; `accent` = accent
@@ -142,14 +145,16 @@ a `themes.json` entry plus any new motif helper.
   0.3 s exit.
 - **One accent per scene:** only `emphasis`/`highlight` gets the accent color.
 - **Micro-motion:** every scene drifts scale 100 → 103 over its duration (no frozen frames).
-- **Fonts:** only fonts verified by `text.fonts`.
+- **Fonts:** only fonts verified by the width probe.
 
 ## Error handling (`ecm.mjs`)
 
 - Spec validation as above.
 - Each scene build is wrapped in try/catch inside the generated script and rethrown as
   `scene N (type): <original message>`.
-- Font preflight: every theme font matched against `effectcraft-cli exec text.fonts --json`; missing → exit 1.
+- Font preflight: a width probe inside the generated JSX measures each theme font against a fallback;
+  a font whose width matches the fallback is substituted → the script throws, `ecm` exits 1.
+- Blank-frame check runs inside `ecm` (`preview` and `render`), not only in `test/smoke.sh`.
 - Render lock: `mkdir /tmp/ecm-render.lock`; held → exit 1 "another render is running"; removed on exit.
 
 ## Testing

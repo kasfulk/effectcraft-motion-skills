@@ -1,0 +1,56 @@
+{
+  "reel": {
+    "label": "Reel Tegas",
+    "align": "left",
+    "easing": "snap",
+    "durationScale": 1,
+    "colors": { "base": "#f2efe8", "ink": "#111111", "accent": "#e63323", "muted": "#6e6a62", "data": "#111111" },
+    "fonts": { "display": "HelveticaNeue-CondensedBlack", "body": "HelveticaNeue-Medium", "label": "HelveticaNeue-Medium" },
+    "motifs": ["slab", "square"]
+  },
+  "pitch": {
+    "label": "Pitch Minimal",
+    "align": "left",
+    "easing": "smooth",
+    "durationScale": 1,
+    "colors": { "base": "#f6f5f1", "ink": "#16171c", "accent": "#2b59ff", "muted": "#9097a8", "data": "#c9ccd6" },
+    "fonts": { "display": "Inter-ExtraBold", "body": "Inter-Medium", "label": "JetBrainsMono-Medium" },
+    "motifs": ["lineLabel", "thin"]
+  },
+  "infopop": {
+    "label": "Infografis Pop",
+    "align": "center",
+    "easing": "pop",
+    "durationScale": 1,
+    "colors": { "base": "#fff6e6", "ink": "#1d2340", "accent": "#ff8a3d", "muted": "#1d2340", "data": "#1fc2a7", "marker": "#ffd23f" },
+    "fonts": { "display": "Montserrat-ExtraBold", "body": "Montserrat-SemiBold", "label": "Montserrat-SemiBold" },
+    "motifs": ["highlighter", "outline", "hardShadow"]
+  },
+  "kinetik": {
+    "label": "Kinetik HUD",
+    "align": "left",
+    "easing": "snap",
+    "durationScale": 1,
+    "colors": { "base": "#0b1416", "ink": "#e6f4f1", "accent": "#ffb000", "muted": "#4d6461", "data": "#4d6461" },
+    "fonts": { "display": "DINCondensed-Bold", "body": "AvenirNextCondensed-DemiBold", "label": "JetBrainsMono-Medium" },
+    "motifs": ["underline", "square"]
+  },
+  "tenang": {
+    "label": "Tenang Minimalis",
+    "align": "center",
+    "easing": "calm",
+    "durationScale": 1.2,
+    "colors": { "base": "#eef0e6", "ink": "#2f4a3a", "accent": "#d9734e", "muted": "#6f8f72", "data": "#a9bfa5" },
+    "fonts": { "display": "AvenirNext-Medium", "body": "AvenirNext-Regular", "label": "AvenirNext-Regular", "quote": "PlayfairDisplayRoman-Bold" },
+    "motifs": ["glow"]
+  },
+  "edukasi": {
+    "label": "Edukasi Kertas",
+    "align": "center",
+    "easing": "pop",
+    "durationScale": 1,
+    "colors": { "base": "#d9b98c", "ink": "#26355d", "accent": "#f07a5a", "muted": "#4a5578", "data": "#2a9d8f", "sheet": "#fbf6ea" },
+    "fonts": { "display": "AvenirNext-Bold", "body": "AvenirNext-DemiBold", "label": "AvenirNext-DemiBold" },
+    "motifs": ["sheet", "softShadow", "tag"]
+  }
+}
