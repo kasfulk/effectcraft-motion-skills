@@ -41,6 +41,8 @@ taskpolicy -b nice -n 19 node $E render  video.json # ~1 min; last line = MP4 pa
 
 Optional per scene: `title` (kinetic/bars/steps), `bg` (`base`/`ink`/`accent`), `duration` (1–15 s; omit to time from text). Fields: [reference/scenes.md](reference/scenes.md).
 
+**Effects:** `fx` at spec or scene level, e.g. `"fx":["grid","rgbIn"]`. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. Two or three per scene; `liquid`/`paper` add render time. See [reference/fx.md](reference/fx.md).
+
 ## Themes
 
 reel: bold news/finance · pitch: calm, technical · infopop: playful explainer · kinetik: dark, high-energy · tenang: soft, reflective · edukasi: lesson/worksheet. See [reference/themes.md](reference/themes.md).
@@ -61,5 +63,6 @@ reel: bold news/finance · pitch: calm, technical · infopop: playful explainer 
 | Checking 2–3 frames | Read every frame on the sheet |
 | Every scene fixed at 3 s | Omit `duration` |
 | Default font, generic dark bg | Pick a theme |
+| Hand-adding AE effects in `custom` JSX | Use an `fx` preset; new effect: add it to `lib/fx.jsx` |
 | `sed -i` on macOS | Use the Edit tool on the spec |
 | Sheet shows sparse/lopsided scene | Fix the spec, re-preview (cheap) before the one render |

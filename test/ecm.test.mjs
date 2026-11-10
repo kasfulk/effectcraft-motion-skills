@@ -33,6 +33,12 @@ test("errors", () => {
   assert.deepEqual(v([{type:"hook", text:"Hai", bg:"red"}]), ["scene 1 (hook): bg must be base|ink|accent"]);
   assert.deepEqual(validate({theme:"reel", out:"clip.mov", scenes:[{type:"hook", text:"Hai"}]}, T), ["out: must be a .mp4 path"]);
 });
+test("fx: names validated at spec and scene level", () => {
+  const err = "fx must be an array of: grid, liquid, paper, grain, vignette, glow, rgbIn, blurIn, sweep, float, glitch";
+  assert.deepEqual(validate({theme:"reel", fx:["grain"], scenes:[{type:"hook", text:"Hai", fx:["glow","sweep"]}]}, T), []);
+  assert.deepEqual(validate({theme:"reel", fx:["nope"], scenes:[{type:"hook", text:"Hai", fx:"glow"}]}, T), [err, `scene 1 (hook): ${err}`]);
+  assert.ok(buildScript({theme:"reel", scenes:[{type:"hook", text:"a"}]}, reel, [3]).includes("var FX = {"));
+});
 test("script embeds hostile text safely", () => {
   const text = 'a "q" \\ b\n</script>\u2028\u2029end';
   const src = buildScript({theme:"reel", scenes:[{type:"hook", text}]}, reel, [3]);
