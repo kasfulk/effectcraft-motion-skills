@@ -6,6 +6,7 @@
 |---|---|---|---|---|
 | `theme` | yes | string | Must name a key in `themes.json` | Unknown values produce `theme: unknown ...`. |
 | `scenes` | yes | array | Non-empty array | Contains scene objects. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, or `dip` | Default entrance transition for every scene after the first. Unknown values error. |
 | `out` | no | string | Must be a `.mp4` path | Resolved relative to the spec file. Without it, output uses the spec basename plus `.mp4`. |
 
 ## Shared scene fields
@@ -18,6 +19,7 @@
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
 | `fx` | no | string array | Preset names from [fx.md](fx.md) | Also allowed at spec level; both lists apply. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, or `dip` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
 
 ## `hook`
 
@@ -126,6 +128,36 @@ var CX = 515
 `text` fits and wraps text. `rect` creates a rectangle. `ellipse` creates a circle. `ring` creates a stroked ellipse and trim-path handle. `animate` adds eased keyframes. `revealText` reveals text by selector offset. `colorRange` applies a text fill-color range. `fmtID` formats numbers with Indonesian separators. `counterExpr` returns a live counting Source Text expression. `onColor` chooses the higher-contrast base or ink color. `SAFE` defines content bounds, and `CX` is the content center.
 
 Content must stay inside `SAFE` (`x 90–940`, `y 250–1450`). Layers with comment `bg` or `decor` are exempt. A `text` call that still does not fit at its minimum size throws `text too long`.
+
+## Transitions
+
+By default scenes cut hard. A spec-level `transition` sets the default entrance for every scene after the first; a scene-level `transition` overrides it for that scene.
+
+| value | length | behavior |
+|---|---|---|
+| `cut` | — | Hard cut (default; current behavior). |
+| `fade` | 0.35 s | Crossfade: the incoming scene fades in over the outgoing one. |
+| `wipe` | 0.4 s | Directional `Linear Wipe` of the incoming scene; angle follows `theme.align` (left: 0°, center: 90°). |
+| `slide` | 0.45 s | Incoming scene slides in — from the right on `left` themes, from the bottom on `center` themes. |
+| `dip` | 0.4 s | Dip through a solid of `theme.colors.ink` across the cut. |
+
+Lengths are fixed and not user-tunable.
+
+```json
+{
+  "theme": "reel",
+  "transition": "fade",
+  "scenes": [
+    {"type": "hook", "text": "Ubah cara melihat uang"},
+    {"type": "stat", "value": 72, "suffix": "%"},
+    {"type": "outro", "text": "Mulai hari ini.", "transition": "dip"}
+  ]
+}
+```
+
+### Duration and overlap
+
+Scene start times and the total video length are unchanged: a transition overlaps the outgoing scene instead of adding time. The incoming scene's precomp layer starts its transition length early and the outgoing layer's outPoint is extended by the same amount, so `check`, the printed `total`, and the rendered MP4 all still agree. Required holds (`settle + 1.5 s`) and `duration too short` errors are unaffected — the overlap is taken from time that was already there, never from the hold. For `fade`, `wipe`, and `slide` the outgoing scene's own content fade-out (`exitAll`) is shortened to end when the overlap begins, so the two scenes mix rather than fading to background first; `cut` and `dip` keep the full fade-out.
 
 ## Duration and hold
 

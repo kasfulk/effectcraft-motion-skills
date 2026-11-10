@@ -182,6 +182,50 @@ test("deck validation errors", () => {
     ['template "plain": size must be one of 3:4, 4:5, 1:1', 'template "plain": drawing must be cover, every, some, or empty']);
 });
 
+test("transitions: valid values, default + override, first scene ignored", () => {
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"fade"}]), []);
+  assert.deepEqual(validate({theme:"reel", transition:"wipe", scenes:[{type:"hook", text:"Hai", transition:"dip"}]}, T), []);
+  // first-scene transition accepted but ignored; totals unchanged by any transition
+  const scenes = [
+    {type:"hook", text:"Hai"},
+    {type:"stat", value:72, transition:"fade"},
+    {type:"donut", value:40, transition:"slide"},
+    {type:"outro", text:"Done", transition:"dip"},
+  ];
+  const durs = scenes.map((s) => durationOf(s, reel));
+  assert.deepEqual(validate({theme:"reel", transition:"wipe", scenes}, T), []);
+  assert.deepEqual(durs, scenes.map((s) => durationOf(s, reel)));
+});
+
+test("transitions: unknown values error at scene and spec level", () => {
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"zoom"}]),
+    ['scene 1 (hook): transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:5}]),
+    ['scene 1 (hook): transition: unknown 5 (cut|fade|wipe|slide|dip)']);
+  assert.deepEqual(validate({theme:"reel", transition:"zoom", scenes:[{type:"hook", text:"Hai"}]}, T),
+    ['transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+});
+
+test("transitions: MAIN emits overlap and per-type JSX, totals untouched", () => {
+  const durs = [2.5, 3.2, 3.2, 2.5];
+  const scenes = [
+    {type:"hook", text:"Hai"},
+    {type:"stat", value:72, transition:"fade"},
+    {type:"steps", items:["Satu","Dua"], transition:"wipe"},
+    {type:"outro", text:"Done", transition:"dip"},
+  ];
+  const src = buildScript({theme:"reel", transition:"slide", scenes}, reel, durs);
+  assert.ok(src.includes("TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4}"), "fixed lengths");
+  assert.ok(src.includes("l.startTime = st - ov"), "incoming starts early");
+  assert.ok(src.includes("addProperty('Linear Wipe')"), "wipe effect");
+  assert.ok(src.includes("'Wipe Angle'"), "wipe angle param");
+  assert.ok(src.includes("addSolid(rgb(THEME.colors.ink), 'dip'"), "dip solid");
+  // overlap never eats the hold: exitAll shortens only for overlapping transitions
+  assert.ok(src.includes("tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0)"), "exitAll skip");
+  // totals: durationOf ignores the transition field
+  for (const s of scenes) assert.equal(durationOf({...s, transition:undefined}, reel), durationOf(s, reel));
+});
+
 test("SLIDE_SIZES mapping", () => {
   assert.deepEqual(SLIDE_SIZES["3:4"], [1080, 1440]);
   assert.deepEqual(SLIDE_SIZES["4:5"], [1080, 1350]);
