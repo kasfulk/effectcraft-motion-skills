@@ -162,3 +162,17 @@ test "$probe" = '1080,1920,30/1'
 duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$mp4")
 node -e 'if(Math.abs(Number(process.argv[1])-Number(process.argv[2]))>0.05)process.exit(1)' "$duration" "$total"
 test ! -e "$LOCK"
+
+# audio spec: check plan + render + mux
+cp "$ROOT/examples/hemat-audio.json" "$TMP/hemat-audio.json"
+node "$ROOT/bin/ecm.mjs" check "$TMP/hemat-audio.json" >"$TMP/audio-check.out" 2>"$TMP/audio-check.err"
+grep -F 'audio  bed rain' "$TMP/audio-check.out"
+grep -F 'audio  sfx keypress-001' "$TMP/audio-check.out"
+taskpolicy -b nice -n 19 node "$ROOT/bin/ecm.mjs" render "$TMP/hemat-audio.json" >"$TMP/audio-render.out" 2>"$TMP/audio-render.err"
+amp4=$(tail -n 1 "$TMP/audio-render.out")
+test -f "$amp4"
+grep -F 'audio: muxed 3 sfx + bed' "$TMP/audio-render.out"
+test "$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$amp4")" = 'aac'
+aduration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$amp4")
+node -e 'if(Math.abs(Number(process.argv[1])-Number(process.argv[2]))>0.1)process.exit(1)' "$aduration" "$total"
+test ! -e "$LOCK"

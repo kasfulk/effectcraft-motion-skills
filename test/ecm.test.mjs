@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadThemes, loadTemplates, validate, validateDeck, durationOf, buildScript, buildSlidesScript, resolveTheme, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
+import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, audioArgs, resolveSfxFile, muxAudio, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
 test("themes: ids and structure", () => {
@@ -197,4 +197,90 @@ test("buildSlidesScript injects SPEC, TPL, THEME, SIZE and SLIDES.draw", () => {
   assert.ok(src.includes("var SIZE ="), "SIZE injected");
   assert.ok(src.includes("SLIDES.draw"), "SLIDES.draw called");
   assert.ok(src.includes("addComp('Main'"), "Main comp built");
+});
+
+// --- audio ---
+const SPEC_DIR = new URL("..", import.meta.url).pathname;
+const SFX_DIR = join(SPEC_DIR, "assets", "sfx");
+const aSpec = (audio) => ({ theme: "reel", scenes: [{ type: "hook", text: "Hai" }, { type: "outro", text: "Bye" }], audio });
+const STARTS = [0, 3];
+
+test("resolveSfxFile finds sfx and bed names", () => {
+  assert.equal(resolveSfxFile("keypress-001", "/tmp"), join(SFX_DIR, "keypress-001.wav"));
+  assert.equal(resolveSfxFile("thunder-1", "/tmp"), join(SFX_DIR, "thunder-1.m4a"));
+  assert.equal(resolveSfxFile("rain", "/tmp"), join(SFX_DIR, "beds", "rain.m4a"));
+  assert.equal(resolveSfxFile("nope-xyz", "/tmp"), "/tmp/nope-xyz");
+});
+
+test("audioArgs: bed only", () => {
+  const r = audioArgs(aSpec({ bed: "rain" }), SPEC_DIR, 6, STARTS);
+  assert.deepEqual(r.inputArgs, ["-stream_loop", "-1", "-t", "6", "-i", join(SFX_DIR, "beds", "rain.m4a")]);
+  assert.ok(r.filter.includes("volume=-20dB"), r.filter);
+  assert.ok(r.filter.includes("afade=t=in:st=0:d=0.3"), r.filter);
+  assert.ok(r.filter.includes("afade=t=out:st=5.200:d=0.8"), r.filter);
+  assert.ok(r.filter.includes("amix=inputs=1:normalize=0"), r.filter);
+  assert.ok(r.filter.includes("loudnorm=I=-18:TP=-1.5:LRA=11"), r.filter);
+});
+
+test("audioArgs: sfx only", () => {
+  const r = audioArgs(aSpec({ sfx: [{ at: 3.2, name: "keypress-001", gain: -8 }, { scene: 2, name: "thunder-1" }] }), SPEC_DIR, 6, STARTS);
+  assert.deepEqual(r.inputArgs, ["-i", join(SFX_DIR, "keypress-001.wav"), "-i", join(SFX_DIR, "thunder-1.m4a")]);
+  assert.ok(r.filter.includes("[1:a]volume=-8dB,adelay=3200:all=1[s0]"), r.filter);
+  assert.ok(r.filter.includes("[2:a]volume=-6dB,adelay=3000:all=1[s1]"), r.filter); // default gain -6, scene 2 -> 3s
+  assert.ok(r.filter.includes("amix=inputs=2:normalize=0"), r.filter);
+});
+
+test("audioArgs: bed + sfx input indices shift", () => {
+  const r = audioArgs(aSpec({ bed: "ocean", sfx: [{ at: 1, name: "bong_001" }] }), SPEC_DIR, 6, STARTS);
+  assert.equal(r.inputArgs[7], join(SFX_DIR, "bong_001.ogg"));
+  assert.ok(r.filter.includes("[2:a]volume=-6dB,adelay=1000:all=1[s0]"), r.filter);
+  assert.ok(r.filter.includes("[b0][s0]amix=inputs=2:normalize=0"), r.filter);
+});
+
+test("audioArgs: no audio block", () => assert.equal(audioArgs({ theme: "reel", scenes: [] }, SPEC_DIR, 6, STARTS), undefined));
+
+test("validateSpec: valid audio passes", () => {
+  assert.deepEqual(validateSpec(aSpec({ bed: "rain", sfx: [{ at: 1, name: "keypress-001" }, { scene: 2, name: "thunder-1" }] }), T, SPEC_DIR), []);
+  assert.deepEqual(validateSpec(aSpec({ sfx: [] }), T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+  assert.deepEqual(validateSpec(aSpec({}), T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+});
+
+test("validateSpec: audio errors", () => {
+  const spec = (audio) => aSpec(audio);
+  const total = durationOf({ type: "hook", text: "Hai" }, T.reel) + durationOf({ type: "outro", text: "Bye" }, T.reel);
+  assert.deepEqual(validateSpec({ ...spec({}), theme: "reel", scenes: [{ type: "hook", text: "Hai" }], audio: {} }, T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+  assert.ok(validateSpec(spec({ bed: "rain", bedGain: 5 }), T, SPEC_DIR).includes("audio.bedGain: must be -40–0 dB"));
+  assert.ok(validateSpec(spec({ bed: 5 }), T, SPEC_DIR).includes("audio.bed: must be a non-empty string"));
+  assert.ok(validateSpec(spec({ bed: "nope-lake" }), T, SPEC_DIR)[0].startsWith("audio.bed: cannot find"), validateSpec(spec({ bed: "nope-lake" }), T, SPEC_DIR)[0]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "nope" }] }), T, SPEC_DIR), ["audio.sfx[0]: cannot find \"nope\" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1 }] }), T, SPEC_DIR), ["audio.sfx[0]: name required"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: needs \"at\" or \"scene\""]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, scene: 1, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: use either \"at\" or \"scene\", not both"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: -1, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: at must be a number ≥ 0"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 99, name: "keypress-001" }] }), T, SPEC_DIR), [`audio.sfx[0]: at 99s is past the end (${total.toFixed(2)}s)`]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ scene: 3, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: scene must be 1–2"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ scene: 1, name: "keypress-001" }] }), T, SPEC_DIR), []);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "keypress-001", gain: -41 }] }), T, SPEC_DIR), ["audio.sfx[0]: gain must be -40–0 dB"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "keypress-001" }, { at: 1.2, name: "thunder-1" }] }), T, SPEC_DIR),
+    ["audio.sfx[1] overlaps audio.sfx[0] (0.5 s minimum)"]);
+  const dense = Array.from({ length: 5 }, (_, i) => ({ at: i * 2.6, name: "thunder-1" }));
+  assert.ok(validateSpec(spec({ sfx: dense }), T, SPEC_DIR).includes(`audio.sfx: too dense (5 sfx in ${total.toFixed(2)}s; one per 2.5 s minimum)`));
+  const thirteen = Array.from({ length: 13 }, (_, i) => ({ at: i * 3, name: "thunder-1" }));
+  assert.ok(validateSpec(spec({ sfx: thirteen }), T, SPEC_DIR).includes("audio.sfx: at most 12 entries"));
+});
+
+test("audio: real ffmpeg mux on a generated black video", { skip: !existsSync("/opt/homebrew/bin/ffmpeg") }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "ecm-"));
+  try {
+    const mp4 = join(dir, "black.mp4");
+    const gen = spawnSync("/opt/homebrew/bin/ffmpeg", ["-y", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:r=30", "-t", "3", "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], { encoding: "utf8" });
+    assert.equal(gen.status, 0, gen.stderr?.slice(-500));
+    const spec = aSpec({ bed: "rain", bedGain: -18, sfx: [{ at: 1.2, name: "keypress-001", gain: -10 }, { scene: 2, name: "thunder-1" }] });
+  assert.ok(muxAudio(mp4, spec, SPEC_DIR, 3, STARTS));
+    const codec = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", mp4], { encoding: "utf8" });
+    assert.equal(codec.stdout.trim(), "aac", codec.stderr);
+    const dur = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", mp4], { encoding: "utf8" });
+    assert.ok(Math.abs(Number(dur.stdout) - 3) <= 0.1, dur.stdout);
+    assert.ok(!existsSync(mp4.replace(/\.mp4$/, ".tmp.mp4")), "tmp file cleaned up");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

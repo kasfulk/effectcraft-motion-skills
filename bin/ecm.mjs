@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -95,6 +95,53 @@ function sceneErrors(s) {
   return e;
 }
 
+// craft rules for the audio block; returns [] or error strings
+export function validateAudio(audio, specDir, totalSeconds, sceneStarts, sceneCount) {
+  const errors = [];
+  if (audio.bed !== undefined && !str(audio.bed)) errors.push("audio.bed: must be a non-empty string");
+  if (audio.bedGain !== undefined && !sfxGainOk(audio.bedGain)) errors.push("audio.bedGain: must be -40–0 dB");
+  if (audio.sfx !== undefined) {
+    if (!Array.isArray(audio.sfx)) errors.push("audio.sfx: must be an array");
+    else {
+      if (audio.sfx.length > 12) errors.push("audio.sfx: at most 12 entries");
+      if (!audio.bed && audio.sfx.length === 0) errors.push("audio: needs a bed or at least one sfx");
+      audio.sfx.forEach((s, i) => {
+        const label = `audio.sfx[${i}]`;
+        if (!plainObj(s)) { errors.push(`${label}: must be an object`); return; }
+        if (!str(s.name)) errors.push(`${label}: name required`);
+        const hasAt = s.at !== undefined, hasScene = s.scene !== undefined;
+        if (hasAt && hasScene) errors.push(`${label}: use either "at" or "scene", not both`);
+        if (!hasAt && !hasScene) errors.push(`${label}: needs "at" or "scene"`);
+        if (hasAt && !(Number.isFinite(s.at) && s.at >= 0)) errors.push(`${label}: at must be a number ≥ 0`);
+        if (hasScene && !(Number.isInteger(s.scene) && s.scene >= 1 && s.scene <= sceneCount)) errors.push(`${label}: scene must be 1–${sceneCount}`);
+        if (!sfxGainOk(s.gain)) errors.push(`${label}: gain must be -40–0 dB`);
+        if (hasAt && Number.isFinite(s.at) && s.at >= 0 && Number.isFinite(totalSeconds) && s.at > totalSeconds) errors.push(`${label}: at ${s.at}s is past the end (${totalSeconds.toFixed(2)}s)`);
+      });
+    }
+  }
+  if (audio.bed === undefined && !Array.isArray(audio.sfx)) errors.push("audio: needs a bed or at least one sfx");
+  if (str(audio.bed)) {
+    const file = resolveSfxFile(audio.bed, specDir);
+    if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file))
+      errors.push(`audio.bed: cannot find "${audio.bed}" (looked in assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+  }
+  // resolution + overlap + density need valid entries
+  if (Array.isArray(audio.sfx)) {
+    audio.sfx.forEach((s, i) => {
+      if (!plainObj(s) || !str(s.name)) return;
+      const file = resolveSfxFile(s.name, specDir);
+      if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file))
+        errors.push(`audio.sfx[${i}]: cannot find "${s.name}" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+    });
+    const times = audio.sfx.map((s, i) => ({ i, s, t: s.at !== undefined ? s.at : s.scene !== undefined ? sceneStarts[s.scene - 1] : undefined }))
+      .filter((x) => Number.isFinite(x.t)).sort((a, b) => a.t - b.t);
+    for (let j = 1; j < times.length; j++)
+      if (times[j].t - times[j - 1].t < 0.5) errors.push(`audio.sfx[${times[j].i}] overlaps audio.sfx[${times[j - 1].i}] (0.5 s minimum)`);
+    if (times.length > 1 && times.length / totalSeconds > 1 / 2.5) errors.push(`audio.sfx: too dense (${times.length} sfx in ${totalSeconds.toFixed(2)}s; one per 2.5 s minimum)`);
+  }
+  return errors;
+}
+
 export function validate(spec, themes) {
   if (!spec || typeof spec !== "object") return ["spec: must be an object"];
   const errors = [];
@@ -133,6 +180,20 @@ export function validate(spec, themes) {
     const msgs = SCENE_TYPES.includes(type) ? sceneErrors(s) : ["type unknown"];
     for (const m of msgs) errors.push(`scene ${i + 1} (${type}): ${m}`);
   });
+  return errors;
+}
+
+// validate with the audio block resolved: needs durations for scene-relative and density rules
+export function validateSpec(spec, themes, specDir = process.cwd()) {
+  const errors = validate(spec, themes);
+  if (errors.length || !spec || typeof spec !== "object" || spec.audio === undefined) return errors;
+  if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) return errors;
+  const theme = Object.hasOwn(themes, spec.theme) ? resolveTheme(themes[spec.theme], spec, loadTemplates()) : null;
+  if (!theme) return errors;
+  if (!plainObj(spec.audio)) return [...errors, "audio: must be an object"];
+  const durs = sceneDurations(spec, theme);
+  let at = 0; const starts = durs.map((d) => { const s = at; at += d; return s; });
+  errors.push(...validateAudio(spec.audio, specDir, at, starts, spec.scenes.length));
   return errors;
 }
 
@@ -339,17 +400,109 @@ function readSpec(file) {
   catch (err) { console.error(`${file}: ${err.message}`); return undefined; }
 }
 
-function check(file) {
+const SFX_EXTS = [".wav", ".m4a", ".mp3", ".ogg"];
+const FFMPEG = "/opt/homebrew/bin/ffmpeg";
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+const AUDIO_EXT = /\.(wav|m4a|mp3|ogg)$/i;
+
+const sfxDir = () => new URL("../assets/sfx/", import.meta.url).pathname;
+
+// name resolves to assets/sfx/<name>.<ext>, assets/sfx/beds/<name>.<ext>, else spec-relative path
+export function resolveSfxFile(name, specDir) {
+  if (typeof name !== "string" || name.trim() === "") return undefined;
+  if (name.includes("/")) return resolve(specDir, name);
+  const dir = sfxDir();
+  for (const base of [join(dir, name), join(dir, "beds", name)])
+    for (const ext of SFX_EXTS) if (existsSync(base + ext)) return base + ext;
+  return resolve(specDir, name);
+}
+
+const sfxGainOk = (g) => g === undefined || (Number.isFinite(g) && g >= -40 && g <= 0);
+
+// pure: [{file, at, gain, label}] with absolute times; throws Error on bad input
+export function planSfx(audio, specDir, totalSeconds, sceneStarts) {
+  return (audio.sfx || []).map((s, i) => {
+    const label = `audio.sfx[${i}]`;
+    const at = s.scene !== undefined ? sceneStarts[s.scene - 1] : s.at;
+    if (at === undefined || !Number.isFinite(at)) throw new Error(`${label}: needs a finite "at" or a "scene"`);
+    const file = resolveSfxFile(s.name, specDir);
+    if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file)) throw new Error(`${label}: cannot find "${s.name}" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+    return { file, at, gain: s.gain === undefined ? -6 : s.gain, label, name: s.name };
+  });
+}
+
+// input 0 is the silent video (added by muxAudio), audio inputs start at 1
+export function audioArgs(spec, specDir, totalSeconds, sceneStarts) {
+  const audio = spec?.audio;
+  if (!audio) return undefined;
+  const bed = audio.bed !== undefined ? resolveSfxFile(audio.bed, specDir) : undefined;
+  if (audio.bed !== undefined && (bed === undefined || !AUDIO_EXT.test(bed) || !existsSync(bed)))
+    throw new Error(`audio.bed: cannot find "${audio.bed}" (looked in assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+  const sfx = planSfx(audio, specDir, totalSeconds, sceneStarts);
+  const inputArgs = [], parts = [];
+  if (bed) inputArgs.push("-stream_loop", "-1", "-t", String(totalSeconds), "-i", bed);
+  for (const s of sfx) inputArgs.push("-i", s.file);
+  if (bed) {
+    parts.push(`[1:a]volume=${audio.bedGain === undefined ? -20 : audio.bedGain}dB,afade=t=in:st=0:d=0.3,afade=t=out:st=${Math.max(0, totalSeconds - 0.8).toFixed(3)}:d=0.8[bed]`);
+    parts.push(`[bed]${sfx.length ? "apad" : "anull"}[b0]`);
+  }
+  sfx.forEach((s, i) => parts.push(`[${(bed ? 2 : 1) + i}:a]volume=${s.gain}dB,adelay=${Math.round(s.at * 1000)}:all=1[s${i}]`));
+  const labels = [(bed ? "[b0]" : ""), ...sfx.map((_, i) => `[s${i}]`)].filter(Boolean);
+  parts.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0,loudnorm=I=-18:TP=-1.5:LRA=11[aout]`);
+  return { inputArgs, filter: parts.join(";") };
+}
+
+export function probeDuration(file) {
+  const r = spawnSync(FFPROBE, ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", file], { encoding: "utf8" });
+  const d = r.status === 0 ? Number((r.stdout || "").trim()) : NaN;
+  return Number.isFinite(d) && d > 0 ? d : undefined;
+}
+
+// mutates the silent MP4 in place (tmp + rename). Returns true on success.
+export function muxAudio(out, spec, specDir, totalSeconds, sceneStarts) {
+  const plan = audioArgs(spec, specDir, totalSeconds, sceneStarts);
+  if (plan === undefined) return false;
+  const tmp = out.replace(/\.mp4$/, "") + ".tmp.mp4";
+  const args = ["-y", "-i", out, ...plan.inputArgs, "-filter_complex", plan.filter,
+    "-map", "0:v:0", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", tmp];
+  const r = spawnSync(FFMPEG, args, { encoding: "utf8" });
+  if (r.status !== 0) {
+    rmSync(tmp, { force: true });
+    throw new Error(`audio mux failed: ${((r.stderr || "").split(/\r?\n/).filter(Boolean).at(-1)) || r.error?.message || "ffmpeg failed to start"}`);
+  }
+  renameSync(tmp, out);
+  return true;
+}
+
+export function check(file) {
   const spec = readSpec(file);
   if (spec === undefined) return 1;
   const themes = loadThemes(), templates = loadTemplates();
-  const errors = validate(spec, themes);
+  const errors = validateSpec(spec, themes, dirname(file));
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
   const theme = resolveTheme(themes[spec.theme], spec, templates);
   const durs = sceneDurations(spec, theme);
   durs.forEach((d, i) => console.log(`${i + 1}  ${spec.scenes[i].type}  ${d.toFixed(2)}`));
-  console.log(`total  ${totalDuration(durs).toFixed(2)}`);
+  const total = totalDuration(durs);
+  console.log(`total  ${total.toFixed(2)}`);
+  if (spec.audio) printAudioPlan(spec, dirname(file), total, sceneStartsOf(durs), spec.scenes.length);
   return 0;
+}
+
+function sceneStartsOf(durs) {
+  const starts = []; let at = 0;
+  for (const d of durs) { starts.push(at); at += d; }
+  return starts;
+}
+
+function printAudioPlan(spec, specDir, total, sceneStarts, sceneCount) {
+  const audio = spec.audio;
+  if (audio.bed !== undefined) {
+    const bed = resolveSfxFile(audio.bed, specDir);
+    const dur = bed ? probeDuration(bed) : undefined;
+    console.log(`audio  bed ${audio.bed}${dur ? `  ${dur.toFixed(2)}s` : ""}`);
+  }
+  for (const s of planSfx(audio, specDir, total, sceneStarts)) console.log(`audio  sfx ${s.name}  ${s.at.toFixed(2)}s`);
 }
 
 function render(file) {
@@ -376,6 +529,12 @@ function render(file) {
     }
     const total = totalDuration(res.durs);
     console.log(`total  ${total.toFixed(2)}`);
+    if (spec.audio) {
+      let at = 0; const starts = res.durs.map((d) => { const s = at; at += d; return s; });
+      try { muxAudio(out, spec, dirname(file), total, starts); }
+      catch (err) { console.error(err.message); return 1; }
+      console.log(`audio: muxed ${spec.audio.sfx?.length || 0} sfx + bed`);
+    } else console.log("audio: none");
     console.log(out);
     return 0;
   } finally {
@@ -389,7 +548,7 @@ function preview(file) {
   rmSync(paths(file).sheet, {force:true});
   const spec = readSpec(file);
   if (spec === undefined) return {code:1};
-  const themes = loadThemes(), templates = loadTemplates(), errors = validate(spec, themes);
+  const themes = loadThemes(), templates = loadTemplates(), errors = validateSpec(spec, themes, dirname(file));
   if (errors.length) { for (const m of errors) console.error(m); return {code:1}; }
   const theme = resolveTheme(themes[spec.theme], spec, templates), durs = sceneDurations(spec, theme);
   const { project, sheet } = paths(file);

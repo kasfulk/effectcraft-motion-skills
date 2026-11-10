@@ -127,6 +127,38 @@ var CX = 515
 
 Content must stay inside `SAFE` (`x 90–940`, `y 250–1450`). Layers with comment `bg` or `decor` are exempt. A `text` call that still does not fit at its minimum size throws `text too long`.
 
+## Audio
+
+Optional `audio` block at spec level. Audio is never imported into the EffectCraft project: `render` renders the silent video, then muxes the mix with ffmpeg into the final MP4. Without `audio`, output is unchanged.
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `audio.bed` | one of bed/sfx | string | Resolvable name | Name under `assets/sfx/beds` (no extension) or a path relative to the spec. Looped to the video length. |
+| `audio.bedGain` | no | number | `-40–0` dB | Default `-20`. |
+| `audio.sfx` | one of bed/sfx | array | At most 12 | Sparse sound effects. |
+| `audio.sfx[].name` | yes | string | Resolvable name | First existing of `assets/sfx/<name>.{wav,m4a,mp3,ogg}`, `assets/sfx/beds/<name>.{...}`, else a path relative to the spec. |
+| `audio.sfx[].at` | one of at/scene | number | `0–total` seconds | Absolute time. |
+| `audio.sfx[].scene` | one of at/scene | integer | `1–scenes.length` | Plays at that scene's start; mutually exclusive with `at`. |
+| `audio.sfx[].gain` | no | number | `-40–0` dB | Default `-6`. |
+
+Resolution errors name the path: `audio.sfx[0]: cannot find "nope" (...)`. Craft rules: two sfx closer than 0.5 s → `audio.sfx[3] overlaps audio.sfx[2] (0.5 s minimum)`; average density above one sfx per 2.5 s → `audio.sfx: too dense (...)`; `at` past the end → `audio.sfx[0]: at 99s is past the end (13.33s)`.
+
+Mix: bed looped with `-stream_loop -1 -t <total>`, volume `bedGain`, 0.3 s fade-in, 0.8 s fade-out; each sfx delayed via `adelay` to its resolved time and gained; `amix` then a single-pass `loudnorm=I=-18:TP=-1.5:LRA=11`; muxed with `-c:v copy -c:a aac -b:a 160k -shortest` onto the untouched video stream. `check` prints the resolved audio plan (bed name + duration, each sfx with resolved time) after the scene table. `render` prints `audio: muxed N sfx + bed` or `audio: none`.
+
+Example (`examples/hemat-audio.json`):
+
+```json
+"audio": {
+  "bed": "rain",
+  "bedGain": -24,
+  "sfx": [
+    {"at": 0.2, "name": "impactBell_heavy_000", "gain": -10},
+    {"scene": 2, "name": "keypress-001", "gain": -8},
+    {"scene": 4, "name": "chips-collide-1"}
+  ]
+}
+```
+
 ## Duration and hold
 
 Without an explicit `duration`, `durationOf` computes `1.2 + 0.37 * words + 0.25 * dataItems`, clamps it to `2.5–7`, multiplies by the theme `durationScale`, and rounds to whole frames at 30 fps. Words include string fields except `type`, `bg`, `emphasis`, and `jsx`; `dataItems` is `items.length` for `bars` and `steps`, `lines.length` for `kinetic`, and the total point count for `compare`.
