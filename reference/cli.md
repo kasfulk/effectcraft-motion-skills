@@ -115,6 +115,8 @@ another render is running (remove /tmp/ecm-render.lock if not)
 
 If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Other exact errors include the final engine error and `missing ECM output`. `total` is the final length (matches the MP4); the `out` directory is created if missing. A render always releases `/tmp/ecm-render.lock` on exit.
 
+If the spec has an `audio` block (see [scenes.md](scenes.md)), the silent MP4 is post-muxed with ffmpeg in place (via a `.tmp.mp4` + rename): bed looped to full length with fade-in/out, sparse sfx delayed to their resolved times, mixed, loudness-normalized, and muxed with `-c:v copy`. `render` prints `audio: muxed N sfx + bed` or `audio: none` before the MP4 path; a mux failure prints `audio mux failed: ...` and exits 1.
+
 ### `new`
 
 ```sh
