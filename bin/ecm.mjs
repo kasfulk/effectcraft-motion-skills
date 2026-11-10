@@ -10,7 +10,8 @@ export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps",
 const FPS = 30;
 const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
-const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx"]);
+const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx", "transition"]);
+export const TRANSITIONS = ["cut", "fade", "wipe", "slide", "dip"];
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
 export const THEME_COLOR_KEYS = ["base","ink","accent","muted","data","sheet","marker"];
 export const THEME_FONT_KEYS = ["display","body","label","quote","arabic"];
@@ -79,6 +80,7 @@ function sceneErrors(s) {
       if (!str(s.jsx)) e.push("jsx required");
       break;
   }
+  if (s.transition !== undefined && !TRANSITIONS.includes(s.transition)) e.push(`transition: unknown ${JSON.stringify(s.transition)} (${TRANSITIONS.join("|")})`);
   if (s.duration !== undefined && !(Number.isFinite(s.duration) && s.duration >= 1 && s.duration <= 15)) e.push("duration must be 1–15");
   if (s.bg !== undefined && !["base", "ink", "accent"].includes(s.bg)) e.push("bg must be base|ink|accent");
   if (!fxOk(s.fx)) e.push(FX_ERR);
@@ -108,6 +110,7 @@ export function validate(spec, themes) {
     if (t.fx !== undefined && (!Array.isArray(t.fx) || !t.fx.every((n) => FX_NAMES.includes(n)))) errors.push(`theme ${JSON.stringify(spec.theme)}: fx must be an array of: ${FX_NAMES.join(", ")}`);
     if (t.motifs !== undefined && !(Array.isArray(t.motifs) && t.motifs.every((m) => typeof m === "string"))) errors.push(`theme ${JSON.stringify(spec.theme)}: motifs must be an array of strings`);
   }
+  if (spec.transition !== undefined && !TRANSITIONS.includes(spec.transition)) errors.push(`transition: unknown ${JSON.stringify(spec.transition)} (${TRANSITIONS.join("|")})`);
   if (!fxOk(spec.fx)) errors.push(FX_ERR);
   if (spec.colors !== undefined) {
     if (!plainObj(spec.colors)) errors.push("colors: must be a plain object");
@@ -191,7 +194,8 @@ const MAIN = String.raw`
 (function () {
   function ceilFrame(s) { return Math.ceil(s * 30) / 30; }
   assertFonts(THEME);
-  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), at = 0;
+  var TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4};
+  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
     SCENE_N = i + 1;
@@ -220,10 +224,44 @@ const MAIN = String.raw`
       if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need.toFixed(2) + 's');
       dur = need; c.duration = dur; finalDurs[i] = dur;
     }
-    exitAll(c, dur); pre.push(c); starts.push(at); settle.push(entered); at += dur;
+    var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
+    trans.push(tr);
+    // cut/dip keep the full fade-out; others end the outgoing content when the overlap begins
+    exitAll(c, tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0));
+    pre.push(c); starts.push(at); settle.push(entered); at += dur;
   }
   var main = app.project.items.addComp('Main', 1080, 1920, 1, at, 30);
-  for (var j = 0; j < pre.length; j++) { var l = main.layers.add(pre[j]); l.startTime = starts[j]; l.outPoint = starts[j] + finalDurs[j]; animate(l.transform.scale, starts[j], starts[j] + finalDurs[j], [100,100], [103,103], 'calm'); }
+  var layers = [];
+  for (var j = 0; j < pre.length; j++) {
+    var st = starts[j], ov = TRLEN[trans[j]] || 0;
+    var l = main.layers.add(pre[j]);
+    l.startTime = st - ov; l.outPoint = st + finalDurs[j];
+    animate(l.transform.scale, st, st + finalDurs[j], [100,100], [103,103], 'calm');
+    layers.push(l);
+  }
+  for (var k = 1; k < layers.length; k++) {
+    var t = trans[k], o = TRLEN[t], cut = starts[k];
+    if (t === 'fade') {
+      layers[k].transform.opacity.setValueAtTime(cut - o, 0);
+      animate(layers[k].transform.opacity, cut - o, cut, 0, 100, THEME.easing);
+    } else if (t === 'wipe') {
+      var w = layers[k].property('Effects').addProperty('Linear Wipe');
+      w.property('Wipe Angle').setValue(THEME.align === 'left' ? 0 : 90);
+      w.property('Feather').setValue(8);
+      animate(w.property('Transition Completion'), cut - o, cut, 100, 0, 'smooth');
+    } else if (t === 'slide') {
+      var from = THEME.align === 'left' ? [540 + 1080, 960] : [540, 960 + 1920];
+      animate(layers[k].transform.position, cut - o, cut, from, [540, 960], 'smooth');
+    } else if (t === 'dip') {
+      var half = o / 2;
+      var dip = main.layers.addSolid(rgb(THEME.colors.ink), 'dip', 1080, 1920, 1);
+      dip.comment = 'decor';
+      dip.moveAfter(layers[k - 1]);
+      dip.startTime = cut - half; dip.outPoint = cut + half;
+      animate(dip.transform.opacity, cut - half, cut, 0, 100, 'smooth');
+      animate(dip.transform.opacity, cut, cut + half, 100, 0, 'smooth');
+    }
+  }
   writeLn('ECM ' + JSON.stringify({settle:settle, durs:finalDurs}));
 })();
 `;
