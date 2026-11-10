@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadThemes, loadTemplates, validate, validateDeck, durationOf, buildScript, buildSlidesScript, resolveTheme, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
+import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, muxAudio, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
 test("themes: ids and structure", () => {
@@ -182,6 +182,50 @@ test("deck validation errors", () => {
     ['template "plain": size must be one of 3:4, 4:5, 1:1', 'template "plain": drawing must be cover, every, some, or empty']);
 });
 
+test("transitions: valid values, default + override, first scene ignored", () => {
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"fade"}]), []);
+  assert.deepEqual(validate({theme:"reel", transition:"wipe", scenes:[{type:"hook", text:"Hai", transition:"dip"}]}, T), []);
+  // first-scene transition accepted but ignored; totals unchanged by any transition
+  const scenes = [
+    {type:"hook", text:"Hai"},
+    {type:"stat", value:72, transition:"fade"},
+    {type:"donut", value:40, transition:"slide"},
+    {type:"outro", text:"Done", transition:"dip"},
+  ];
+  const durs = scenes.map((s) => durationOf(s, reel));
+  assert.deepEqual(validate({theme:"reel", transition:"wipe", scenes}, T), []);
+  assert.deepEqual(durs, scenes.map((s) => durationOf(s, reel)));
+});
+
+test("transitions: unknown values error at scene and spec level", () => {
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"zoom"}]),
+    ['scene 1 (hook): transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:5}]),
+    ['scene 1 (hook): transition: unknown 5 (cut|fade|wipe|slide|dip)']);
+  assert.deepEqual(validate({theme:"reel", transition:"zoom", scenes:[{type:"hook", text:"Hai"}]}, T),
+    ['transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+});
+
+test("transitions: MAIN emits overlap and per-type JSX, totals untouched", () => {
+  const durs = [2.5, 3.2, 3.2, 2.5];
+  const scenes = [
+    {type:"hook", text:"Hai"},
+    {type:"stat", value:72, transition:"fade"},
+    {type:"steps", items:["Satu","Dua"], transition:"wipe"},
+    {type:"outro", text:"Done", transition:"dip"},
+  ];
+  const src = buildScript({theme:"reel", transition:"slide", scenes}, reel, durs);
+  assert.ok(src.includes("TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4}"), "fixed lengths");
+  assert.ok(src.includes("l.startTime = st - ov"), "incoming starts early");
+  assert.ok(src.includes("addProperty('Linear Wipe')"), "wipe effect");
+  assert.ok(src.includes("'Wipe Angle'"), "wipe angle param");
+  assert.ok(src.includes("addSolid(rgb(THEME.colors.ink), 'dip'"), "dip solid");
+  // overlap never eats the hold: exitAll shortens only for overlapping transitions
+  assert.ok(src.includes("tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0)"), "exitAll skip");
+  // totals: durationOf ignores the transition field
+  for (const s of scenes) assert.equal(durationOf({...s, transition:undefined}, reel), durationOf(s, reel));
+});
+
 test("SLIDE_SIZES mapping", () => {
   assert.deepEqual(SLIDE_SIZES["3:4"], [1080, 1440]);
   assert.deepEqual(SLIDE_SIZES["4:5"], [1080, 1350]);
@@ -197,4 +241,206 @@ test("buildSlidesScript injects SPEC, TPL, THEME, SIZE and SLIDES.draw", () => {
   assert.ok(src.includes("var SIZE ="), "SIZE injected");
   assert.ok(src.includes("SLIDES.draw"), "SLIDES.draw called");
   assert.ok(src.includes("addComp('Main'"), "Main comp built");
+});
+
+// ---- craft lint ----
+const L = (scenes, theme = T.reel, extra = {}) => {
+  const spec = { theme: "reel", scenes, ...extra };
+  return lint(spec, theme, spec.scenes.map((s) => durationOf(s, theme)))
+    .map((f) => `${f.code} ${f.scene}: ${f.message} → ${f.fix}`);
+};
+const codes = (scenes, theme, extra) => [...new Set(L(scenes, theme, extra).map((l) => l.slice(0, 3)))];
+
+test("C01: cold open and missing outro", () => {
+  assert.ok(L([{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}]},{type:"kinetic",lines:["x"]}]).some((l) => l.startsWith("C01 ") && l.includes("cold open")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"kinetic",lines:["x"]}]).some((l) => l.startsWith("C01 ") && l.includes("no outro/cta")));
+  const ok = L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]);
+  assert.ok(!ok.some((l) => l.startsWith("C01 ")), ok.join("; "));
+});
+test("C02: scene count and total duration", () => {
+  assert.ok(codes([{type:"hook",text:"Hai",emphasis:"hai"}]).includes("C02"));
+  assert.ok(L(Array.from({length:9}, (_,i) => ({type:"hook",text:"Hai"+i,emphasis:"hai"}))).some((l) => l.startsWith("C02 ") && l.includes("9 scenes")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:1,label:"x",suffix:"%"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C02 ") && l.includes("under 12")));
+  assert.ok(L(Array.from({length:8}, (_,i) => ({type:"quote",text:"kata ".repeat(20), emphasis:"kata", duration: 8, bg: i%2?"ink":"base"}))).some((l) => l.startsWith("C02 ") && l.includes("over 60")));
+  assert.equal(codes([{type:"hook",text:"Gaji naik, tabungan tetap?",emphasis:"tetap"},{type:"stat",value:72,suffix:"%",label:"pekerja belum punya dana darurat"},{type:"bars",title:"Tabungan",items:[{label:"Jan",value:40},{label:"Feb",value:72}],highlight:1},{type:"steps",title:"Mulai dari sini",items:["Catat pengeluaran","Sisihkan 10%","Otomatiskan"]},{type:"outro",text:"Simpan video ini.",cta:"Follow untuk tips lain",emphasis:"simpan",bg:"accent"}]).includes("C02"), false);
+});
+test("C03: bars highlight", () => {
+  const items = [{label:"Makanan",value:40},{label:"Transport",value:120}];
+  assert.deepEqual(L([{type:"bars",items}]).filter((l) => l.startsWith("C03 ")), ['C03 scenes[0] (bars): no highlight → add "highlight": 1 (largest value is Transport)']);
+  assert.equal(L([{type:"bars",items,highlight:1}]).filter((l) => l.startsWith("C03")).length, 0);
+  assert.ok(L([{type:"bars",items,highlight:0}]).some((l) => l.startsWith("C03 ") && l.includes("points at the smallest value")));
+});
+test("C04: word counts", () => {
+  assert.ok(L([{type:"hook",text:"satu dua tiga empat lima enam tujuh delapan sembilan sepuluh",emphasis:"satu"}]).some((l) => l.startsWith("C04 ") && l.includes("hook is 10 words")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"kinetic",lines:["satu dua tiga empat lima"]}]).some((l) => l.startsWith("C04 ") && l.includes("line 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"steps",items:["satu dua tiga empat lima enam tujuh delapan"]}]).some((l) => l.startsWith("C04 ") && l.includes("step 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"quote",text:"kata ".repeat(25),emphasis:"kata"}]).some((l) => l.startsWith("C04 ") && l.includes("quote is 25 words")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"compare",left:{title:"a",points:["satu dua tiga empat lima enam tujuh"]},right:{title:"b",points:["x"]}}]).some((l) => l.startsWith("C04 ") && l.includes("left point 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"outro",text:"Simpan.",cta:"satu dua tiga empat lima enam",emphasis:"simpan"}]).some((l) => l.startsWith("C04 ") && l.includes("cta is 6 words")));
+  const ok = L([{type:"hook",text:"Gaji naik?",emphasis:"naik"},{type:"outro",text:"Simpan.",cta:"Follow kami",emphasis:"simpan"}]);
+  assert.ok(!ok.some((l) => l.startsWith("C04 ")), ok.join("; "));
+});
+test("C05: emphasis", () => {
+  assert.ok(L([{type:"hook",text:"Hai"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C05 ") && l.includes("no emphasis word")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu dua tiga empat"}]).some((l) => l.startsWith("C05 ") && l.includes("is 4 words")));
+});
+test("C06: rhythm", () => {
+  assert.ok(L([{type:"stat",value:1,label:"x"},{type:"stat",value:2,label:"x"},{type:"stat",value:3,label:"x"}]).some((l) => l.startsWith("C06 ") && l.includes("three consecutive stat")));
+  assert.equal(L([{type:"kinetic",lines:["a"]},{type:"kinetic",lines:["b"]},{type:"kinetic",lines:["c"]}]).filter((l) => l.startsWith("C06 ") && l.includes("consecutive")).length, 0);
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:1,label:"x"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:1},{type:"stat",value:2,label:"x"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C06 ") && l.includes("flat rhythm")));
+});
+test("C07: fx", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"}], T.reel, {fx:["grain","glow"]}).some((l) => l.startsWith("C07 spec:") && l.includes("2 spec-level fx presets")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glow","sweep"]}]).some((l) => l.startsWith("C07 scenes[0]") && l.includes("2 fx presets")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glitch"]}], T.tenang).some((l) => l.startsWith("C07 ") && l.includes("fights the calm theme")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glitch"]}], T.reel).filter((l) => l.startsWith("C07")).length, 0);
+});
+test("C08: numbers", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:150}]).some((l) => l.startsWith("C08 ") && l.includes("without label")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:150,label:"x"}]).some((l) => l.startsWith("C08 ") && l.includes("reads like a percentage")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"bars",items:[{label:"a",value:500},{label:"b",value:200}],highlight:0}]).some((l) => l.startsWith("C08 ") && l.includes("over 100")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"donut",value:12.5}]).some((l) => l.startsWith("C08 ") && l.includes("has decimals")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:72,suffix:"%",label:"x"},{type:"donut",value:72}]).filter((l) => l.startsWith("C08")).length, 0);
+});
+test("C09: long hold", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",duration:6}]).some((l) => l.startsWith("C09 ") && l.includes("long hold")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai",duration:4}]).filter((l) => l.startsWith("C09")).length, 0);
+  assert.equal(L([{type:"stat",value:1,label:"x",duration:15}]).filter((l) => l.startsWith("C09")).length, 0, "non-text scenes exempt");
+});
+test("C10: data-only", () => {
+  assert.ok(L([{type:"stat",value:1,label:"x",suffix:"%"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:0},{type:"donut",value:50},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C10 ") && l.includes("numbers without a line of meaning")));
+  assert.equal(L([{type:"stat",value:1,label:"x",suffix:"%"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:0},{type:"kinetic",lines:["arti angka ini"]},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).filter((l) => l.startsWith("C10")).length, 0);
+});
+test("lint: examples produce zero errors, lint-bad triggers many codes", () => {
+  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  for (const name of ["hemat.json", "all-scenes.json"]) {
+    const file = new URL(`../examples/${name}`, import.meta.url).pathname;
+    const r = spawnSync(process.execPath, [bin, "check", file], {encoding: "utf8"});
+    assert.equal(r.status, 0, r.stderr);
+    for (const line of r.stdout.split("\n")) assert.ok(!line.startsWith("ERROR"), line);
+  }
+  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const r = spawnSync(process.execPath, [bin, "check", bad], {encoding: "utf8"});
+  assert.equal(r.status, 0, r.stderr);
+  const found = [...new Set(r.stdout.split("\n").filter((l) => l.startsWith("WARN")).map((l) => l.slice(6, 9)))];
+  assert.ok(found.length >= 6, `expected >= 6 codes, got ${found.join(",")}`);
+  for (const c of ["C01","C03","C04","C05","C06","C07","C08"]) assert.ok(found.includes(c), `${c} missing from ${found.join(",")}`);
+});
+test("check: --strict exits 2 on warnings, 0 when clean", () => {
+  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const r = spawnSync(process.execPath, [bin, "check", bad, "--strict"], {encoding: "utf8"});
+  assert.equal(r.status, 2);
+  assert.ok(r.stdout.includes("WARN  "), r.stdout);
+  const cleanSpec = { theme: "reel", scenes: [
+    {type:"hook", text:"Gaji naik, tabungan tetap?", emphasis:"tetap"},
+    {type:"stat", value:72, suffix:"%", label:"pekerja belum punya dana darurat", bg:"ink"},
+    {type:"bars", title:"Tabungan per bulan", items:[{label:"Jan",value:40},{label:"Feb",value:72}], highlight:1},
+    {type:"steps", title:"Mulai dari sini", items:["Catat pengeluaran","Sisihkan 10%","Otomatiskan"]},
+    {type:"outro", text:"Simpan video ini.", cta:"Follow untuk tips lain", emphasis:"simpan", bg:"accent"},
+  ]};
+  const dir = mkdtempSync(join(tmpdir(), "ecm-"));
+  try {
+    const clean = join(dir, "clean.json");
+    writeFileSync(clean, JSON.stringify(cleanSpec));
+    const r0 = spawnSync(process.execPath, [bin, "check", clean, "--strict"], {encoding: "utf8"});
+    assert.equal(r0.status, 0, r0.stdout);
+    assert.ok(!r0.stdout.includes("WARN"), r0.stdout);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+// --- audio ---
+const SPEC_DIR = new URL("..", import.meta.url).pathname;
+const SFX_DIR = join(SPEC_DIR, "assets", "sfx");
+const aSpec = (audio) => ({ theme: "reel", scenes: [{ type: "hook", text: "Hai" }, { type: "outro", text: "Bye" }], audio });
+const STARTS = [0, 3];
+
+test("resolveSfxFile finds sfx and bed names", () => {
+  assert.equal(resolveSfxFile("keypress-001", "/tmp"), join(SFX_DIR, "keypress-001.wav"));
+  assert.equal(resolveSfxFile("thunder-1", "/tmp"), join(SFX_DIR, "thunder-1.m4a"));
+  assert.equal(resolveSfxFile("rain", "/tmp"), join(SFX_DIR, "beds", "rain.m4a"));
+  assert.equal(resolveSfxFile("nope-xyz", "/tmp"), "/tmp/nope-xyz");
+});
+
+test("audioArgs: bed only", () => {
+  const r = audioArgs(aSpec({ bed: "rain" }), SPEC_DIR, 6, STARTS);
+  assert.deepEqual(r.inputArgs, ["-stream_loop", "-1", "-t", "6", "-i", join(SFX_DIR, "beds", "rain.m4a")]);
+  assert.ok(r.filter.includes("volume=-20dB"), r.filter);
+  assert.ok(r.filter.includes("afade=t=in:st=0:d=0.3"), r.filter);
+  assert.ok(r.filter.includes("afade=t=out:st=5.200:d=0.8"), r.filter);
+  assert.ok(r.filter.includes("amix=inputs=1:normalize=0"), r.filter);
+  assert.ok(r.filter.includes("loudnorm=I=-18:TP=-1.5:LRA=11"), r.filter);
+});
+
+test("audioArgs: sfx only", () => {
+  const r = audioArgs(aSpec({ sfx: [{ at: 3.2, name: "keypress-001", gain: -8 }, { scene: 2, name: "thunder-1" }] }), SPEC_DIR, 6, STARTS);
+  assert.deepEqual(r.inputArgs, ["-i", join(SFX_DIR, "keypress-001.wav"), "-i", join(SFX_DIR, "thunder-1.m4a")]);
+  assert.ok(r.filter.includes("[1:a]volume=-8dB,adelay=3200:all=1[s0]"), r.filter);
+  assert.ok(r.filter.includes("[2:a]volume=-6dB,adelay=3000:all=1[s1]"), r.filter); // default gain -6, scene 2 -> 3s
+  assert.ok(r.filter.includes("amix=inputs=2:normalize=0"), r.filter);
+});
+
+test("audioArgs: bed + sfx input indices shift", () => {
+  const r = audioArgs(aSpec({ bed: "ocean", sfx: [{ at: 1, name: "bong_001" }] }), SPEC_DIR, 6, STARTS);
+  assert.equal(r.inputArgs[7], join(SFX_DIR, "bong_001.ogg"));
+  assert.ok(r.filter.includes("[2:a]volume=-6dB,adelay=1000:all=1[s0]"), r.filter);
+  assert.ok(r.filter.includes("[b0][s0]amix=inputs=2:normalize=0"), r.filter);
+});
+
+test("audioArgs: no audio block", () => assert.equal(audioArgs({ theme: "reel", scenes: [] }, SPEC_DIR, 6, STARTS), undefined));
+
+test("validateSpec: valid audio passes", () => {
+  assert.deepEqual(validateSpec(aSpec({ bed: "rain", sfx: [{ at: 1, name: "keypress-001" }, { scene: 2, name: "thunder-1" }] }), T, SPEC_DIR), []);
+  assert.deepEqual(validateSpec(aSpec({ sfx: [] }), T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+  assert.deepEqual(validateSpec(aSpec({}), T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+});
+
+test("validateSpec: audio errors", () => {
+  const spec = (audio) => aSpec(audio);
+  const total = durationOf({ type: "hook", text: "Hai" }, T.reel) + durationOf({ type: "outro", text: "Bye" }, T.reel);
+  assert.deepEqual(validateSpec({ ...spec({}), theme: "reel", scenes: [{ type: "hook", text: "Hai" }], audio: {} }, T, SPEC_DIR), ["audio: needs a bed or at least one sfx"]);
+  assert.ok(validateSpec(spec({ bed: "rain", bedGain: 5 }), T, SPEC_DIR).includes("audio.bedGain: must be -40–0 dB"));
+  assert.ok(validateSpec(spec({ bed: 5 }), T, SPEC_DIR).includes("audio.bed: must be a non-empty string"));
+  assert.ok(validateSpec(spec({ bed: "nope-lake" }), T, SPEC_DIR)[0].startsWith("audio.bed: cannot find"), validateSpec(spec({ bed: "nope-lake" }), T, SPEC_DIR)[0]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "nope" }] }), T, SPEC_DIR), ["audio.sfx[0]: cannot find \"nope\" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1 }] }), T, SPEC_DIR), ["audio.sfx[0]: name required"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: needs \"at\" or \"scene\""]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, scene: 1, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: use either \"at\" or \"scene\", not both"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: -1, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: at must be a number ≥ 0"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 99, name: "keypress-001" }] }), T, SPEC_DIR), [`audio.sfx[0]: at 99s is past the end (${total.toFixed(2)}s)`]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ scene: 3, name: "keypress-001" }] }), T, SPEC_DIR), ["audio.sfx[0]: scene must be 1–2"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ scene: 1, name: "keypress-001" }] }), T, SPEC_DIR), []);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "keypress-001", gain: -41 }] }), T, SPEC_DIR), ["audio.sfx[0]: gain must be -40–0 dB"]);
+  assert.deepEqual(validateSpec(spec({ sfx: [{ at: 1, name: "keypress-001" }, { at: 1.2, name: "thunder-1" }] }), T, SPEC_DIR),
+    ["audio.sfx[1] overlaps audio.sfx[0] (0.5 s minimum)"]);
+  const dense = Array.from({ length: 5 }, (_, i) => ({ at: i * 2.6, name: "thunder-1" }));
+  assert.ok(validateSpec(spec({ sfx: dense }), T, SPEC_DIR).includes(`audio.sfx: too dense (5 sfx in ${total.toFixed(2)}s; one per 2.5 s minimum)`));
+  const thirteen = Array.from({ length: 13 }, (_, i) => ({ at: i * 3, name: "thunder-1" }));
+  assert.ok(validateSpec(spec({ sfx: thirteen }), T, SPEC_DIR).includes("audio.sfx: at most 12 entries"));
+});
+
+test("audio: real ffmpeg mux on a generated black video", { skip: !existsSync("/opt/homebrew/bin/ffmpeg") }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "ecm-"));
+  try {
+    const mp4 = join(dir, "black.mp4");
+    const gen = spawnSync("/opt/homebrew/bin/ffmpeg", ["-y", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:r=30", "-t", "3", "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], { encoding: "utf8" });
+    assert.equal(gen.status, 0, gen.stderr?.slice(-500));
+    const spec = aSpec({ bed: "rain", bedGain: -18, sfx: [{ at: 1.2, name: "keypress-001", gain: -10 }, { scene: 2, name: "thunder-1" }] });
+  assert.ok(muxAudio(mp4, spec, SPEC_DIR, 3, STARTS));
+    const codec = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", mp4], { encoding: "utf8" });
+    assert.equal(codec.stdout.trim(), "aac", codec.stderr);
+    const dur = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", mp4], { encoding: "utf8" });
+    assert.ok(Math.abs(Number(dur.stdout) - 3) <= 0.1, dur.stdout);
+    assert.ok(!existsSync(mp4.replace(/\.mp4$/, ".tmp.mp4")), "tmp file cleaned up");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// ---- deck handle override ----
+test("deck: handle override accepted, unknown fields rejected", () => {
+  const templates = loadTemplates();
+  assert.deepEqual(validateDeck({ template: "themed", handle: "@hidupteratur", slides: [{ text: "A" }] }, templates), []);
+  assert.deepEqual(validateDeck({ template: "themed", handle: "", slides: [{ text: "A" }] }, templates), ["handle: must be a non-empty string"]);
+  assert.ok(validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).some((m) => m.startsWith("bg: unknown deck field")), validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).join("; "));
+  // existing decks without handle still validate
+  assert.deepEqual(validateDeck({ template: "plain", slides: [{ text: "A" }] }, templates), []);
 });

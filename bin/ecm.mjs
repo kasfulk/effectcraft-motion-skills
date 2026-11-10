@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -10,7 +10,8 @@ export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps",
 const FPS = 30;
 const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
-const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx"]);
+const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx", "transition"]);
+export const TRANSITIONS = ["cut", "fade", "wipe", "slide", "dip"];
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
 export const THEME_COLOR_KEYS = ["base","ink","accent","muted","data","sheet","marker"];
 export const THEME_FONT_KEYS = ["display","body","label","quote","arabic"];
@@ -79,6 +80,7 @@ function sceneErrors(s) {
       if (!str(s.jsx)) e.push("jsx required");
       break;
   }
+  if (s.transition !== undefined && !TRANSITIONS.includes(s.transition)) e.push(`transition: unknown ${JSON.stringify(s.transition)} (${TRANSITIONS.join("|")})`);
   if (s.duration !== undefined && !(Number.isFinite(s.duration) && s.duration >= 1 && s.duration <= 15)) e.push("duration must be 1–15");
   if (s.bg !== undefined && !["base", "ink", "accent"].includes(s.bg)) e.push("bg must be base|ink|accent");
   if (!fxOk(s.fx)) e.push(FX_ERR);
@@ -95,6 +97,53 @@ function sceneErrors(s) {
   return e;
 }
 
+// craft rules for the audio block; returns [] or error strings
+export function validateAudio(audio, specDir, totalSeconds, sceneStarts, sceneCount) {
+  const errors = [];
+  if (audio.bed !== undefined && !str(audio.bed)) errors.push("audio.bed: must be a non-empty string");
+  if (audio.bedGain !== undefined && !sfxGainOk(audio.bedGain)) errors.push("audio.bedGain: must be -40–0 dB");
+  if (audio.sfx !== undefined) {
+    if (!Array.isArray(audio.sfx)) errors.push("audio.sfx: must be an array");
+    else {
+      if (audio.sfx.length > 12) errors.push("audio.sfx: at most 12 entries");
+      if (!audio.bed && audio.sfx.length === 0) errors.push("audio: needs a bed or at least one sfx");
+      audio.sfx.forEach((s, i) => {
+        const label = `audio.sfx[${i}]`;
+        if (!plainObj(s)) { errors.push(`${label}: must be an object`); return; }
+        if (!str(s.name)) errors.push(`${label}: name required`);
+        const hasAt = s.at !== undefined, hasScene = s.scene !== undefined;
+        if (hasAt && hasScene) errors.push(`${label}: use either "at" or "scene", not both`);
+        if (!hasAt && !hasScene) errors.push(`${label}: needs "at" or "scene"`);
+        if (hasAt && !(Number.isFinite(s.at) && s.at >= 0)) errors.push(`${label}: at must be a number ≥ 0`);
+        if (hasScene && !(Number.isInteger(s.scene) && s.scene >= 1 && s.scene <= sceneCount)) errors.push(`${label}: scene must be 1–${sceneCount}`);
+        if (!sfxGainOk(s.gain)) errors.push(`${label}: gain must be -40–0 dB`);
+        if (hasAt && Number.isFinite(s.at) && s.at >= 0 && Number.isFinite(totalSeconds) && s.at > totalSeconds) errors.push(`${label}: at ${s.at}s is past the end (${totalSeconds.toFixed(2)}s)`);
+      });
+    }
+  }
+  if (audio.bed === undefined && !Array.isArray(audio.sfx)) errors.push("audio: needs a bed or at least one sfx");
+  if (str(audio.bed)) {
+    const file = resolveSfxFile(audio.bed, specDir);
+    if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file))
+      errors.push(`audio.bed: cannot find "${audio.bed}" (looked in assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+  }
+  // resolution + overlap + density need valid entries
+  if (Array.isArray(audio.sfx)) {
+    audio.sfx.forEach((s, i) => {
+      if (!plainObj(s) || !str(s.name)) return;
+      const file = resolveSfxFile(s.name, specDir);
+      if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file))
+        errors.push(`audio.sfx[${i}]: cannot find "${s.name}" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+    });
+    const times = audio.sfx.map((s, i) => ({ i, s, t: s.at !== undefined ? s.at : s.scene !== undefined ? sceneStarts[s.scene - 1] : undefined }))
+      .filter((x) => Number.isFinite(x.t)).sort((a, b) => a.t - b.t);
+    for (let j = 1; j < times.length; j++)
+      if (times[j].t - times[j - 1].t < 0.5) errors.push(`audio.sfx[${times[j].i}] overlaps audio.sfx[${times[j - 1].i}] (0.5 s minimum)`);
+    if (times.length > 1 && times.length / totalSeconds > 1 / 2.5) errors.push(`audio.sfx: too dense (${times.length} sfx in ${totalSeconds.toFixed(2)}s; one per 2.5 s minimum)`);
+  }
+  return errors;
+}
+
 export function validate(spec, themes) {
   if (!spec || typeof spec !== "object") return ["spec: must be an object"];
   const errors = [];
@@ -108,6 +157,7 @@ export function validate(spec, themes) {
     if (t.fx !== undefined && (!Array.isArray(t.fx) || !t.fx.every((n) => FX_NAMES.includes(n)))) errors.push(`theme ${JSON.stringify(spec.theme)}: fx must be an array of: ${FX_NAMES.join(", ")}`);
     if (t.motifs !== undefined && !(Array.isArray(t.motifs) && t.motifs.every((m) => typeof m === "string"))) errors.push(`theme ${JSON.stringify(spec.theme)}: motifs must be an array of strings`);
   }
+  if (spec.transition !== undefined && !TRANSITIONS.includes(spec.transition)) errors.push(`transition: unknown ${JSON.stringify(spec.transition)} (${TRANSITIONS.join("|")})`);
   if (!fxOk(spec.fx)) errors.push(FX_ERR);
   if (spec.colors !== undefined) {
     if (!plainObj(spec.colors)) errors.push("colors: must be a plain object");
@@ -136,6 +186,20 @@ export function validate(spec, themes) {
   return errors;
 }
 
+// validate with the audio block resolved: needs durations for scene-relative and density rules
+export function validateSpec(spec, themes, specDir = process.cwd()) {
+  const errors = validate(spec, themes);
+  if (errors.length || !spec || typeof spec !== "object" || spec.audio === undefined) return errors;
+  if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) return errors;
+  const theme = Object.hasOwn(themes, spec.theme) ? resolveTheme(themes[spec.theme], spec, loadTemplates()) : null;
+  if (!theme) return errors;
+  if (!plainObj(spec.audio)) return [...errors, "audio: must be an object"];
+  const durs = sceneDurations(spec, theme);
+  let at = 0; const starts = durs.map((d) => { const s = at; at += d; return s; });
+  errors.push(...validateAudio(spec.audio, specDir, at, starts, spec.scenes.length));
+  return errors;
+}
+
 export function validateDeck(deck, templates) {
   if (!deck || typeof deck !== "object") return ["deck: must be an object"];
   const errors = [];
@@ -149,6 +213,8 @@ export function validateDeck(deck, templates) {
   const theme = deck.theme ?? tpl?.style;
   if (!Object.hasOwn(themes, theme)) errors.push(`theme: unknown ${JSON.stringify(theme)} (see themes.json)`);
   if (deck.out !== undefined && !(typeof deck.out === "string" && deck.out.trim() !== "")) errors.push("out: must be a non-empty directory name");
+  for (const k of ["handle"]) if (deck[k] !== undefined && !str(deck[k])) errors.push(`${k}: must be a non-empty string`);
+  for (const k of Object.keys(deck)) if (!["template", "theme", "out", "slides", "handle"].includes(k)) errors.push(`${k}: unknown deck field (template, theme, out, slides, handle)`);
   if (!Array.isArray(deck.slides) || deck.slides.length === 0) {
     errors.push("slides: must be a non-empty array (1–30)");
     return errors;
@@ -191,7 +257,8 @@ const MAIN = String.raw`
 (function () {
   function ceilFrame(s) { return Math.ceil(s * 30) / 30; }
   assertFonts(THEME);
-  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), at = 0;
+  var TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4};
+  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
     SCENE_N = i + 1;
@@ -220,10 +287,44 @@ const MAIN = String.raw`
       if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need.toFixed(2) + 's');
       dur = need; c.duration = dur; finalDurs[i] = dur;
     }
-    exitAll(c, dur); pre.push(c); starts.push(at); settle.push(entered); at += dur;
+    var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
+    trans.push(tr);
+    // cut/dip keep the full fade-out; others end the outgoing content when the overlap begins
+    exitAll(c, tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0));
+    pre.push(c); starts.push(at); settle.push(entered); at += dur;
   }
   var main = app.project.items.addComp('Main', 1080, 1920, 1, at, 30);
-  for (var j = 0; j < pre.length; j++) { var l = main.layers.add(pre[j]); l.startTime = starts[j]; l.outPoint = starts[j] + finalDurs[j]; animate(l.transform.scale, starts[j], starts[j] + finalDurs[j], [100,100], [103,103], 'calm'); }
+  var layers = [];
+  for (var j = 0; j < pre.length; j++) {
+    var st = starts[j], ov = TRLEN[trans[j]] || 0;
+    var l = main.layers.add(pre[j]);
+    l.startTime = st - ov; l.outPoint = st + finalDurs[j];
+    animate(l.transform.scale, st, st + finalDurs[j], [100,100], [103,103], 'calm');
+    layers.push(l);
+  }
+  for (var k = 1; k < layers.length; k++) {
+    var t = trans[k], o = TRLEN[t], cut = starts[k];
+    if (t === 'fade') {
+      layers[k].transform.opacity.setValueAtTime(cut - o, 0);
+      animate(layers[k].transform.opacity, cut - o, cut, 0, 100, THEME.easing);
+    } else if (t === 'wipe') {
+      var w = layers[k].property('Effects').addProperty('Linear Wipe');
+      w.property('Wipe Angle').setValue(THEME.align === 'left' ? 0 : 90);
+      w.property('Feather').setValue(8);
+      animate(w.property('Transition Completion'), cut - o, cut, 100, 0, 'smooth');
+    } else if (t === 'slide') {
+      var from = THEME.align === 'left' ? [540 + 1080, 960] : [540, 960 + 1920];
+      animate(layers[k].transform.position, cut - o, cut, from, [540, 960], 'smooth');
+    } else if (t === 'dip') {
+      var half = o / 2;
+      var dip = main.layers.addSolid(rgb(THEME.colors.ink), 'dip', 1080, 1920, 1);
+      dip.comment = 'decor';
+      dip.moveAfter(layers[k - 1]);
+      dip.startTime = cut - half; dip.outPoint = cut + half;
+      animate(dip.transform.opacity, cut - half, cut, 0, 100, 'smooth');
+      animate(dip.transform.opacity, cut, cut + half, 100, 0, 'smooth');
+    }
+  }
   writeLn('ECM ' + JSON.stringify({settle:settle, durs:finalDurs}));
 })();
 `;
@@ -290,7 +391,8 @@ function slides(file, outArg) {
   const templates = loadTemplates();
   const errors = validateDeck(deck, templates);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
-  const tpl = templates[deck.template];
+  const tpl = { ...templates[deck.template] };
+  if (deck.handle !== undefined) tpl.handle = deck.handle;
   const themeId = deck.theme ?? tpl.style;
   const theme = resolveTheme(loadThemes()[themeId], { template: deck.template }, templates);
   const size = SLIDE_SIZES[tpl.size] || [1080, 1440];
@@ -339,17 +441,237 @@ function readSpec(file) {
   catch (err) { console.error(`${file}: ${err.message}`); return undefined; }
 }
 
-function check(file) {
+const wordsOf = (t) => String(t ?? "").trim().split(/\s+/).filter(Boolean).length;
+
+export function lint(spec, theme, durs) {
+  const out = [];
+  const scenes = Array.isArray(spec?.scenes) ? spec.scenes : [];
+  const at = (i, type) => `scenes[${i}] (${type})`;
+  const add = (code, scene, message, fix) => out.push({ code, scene, level: "warn", message, fix });
+
+  // C01 structure
+  if (scenes.length) {
+    const first = scenes[0]?.type, last = scenes[scenes.length - 1]?.type;
+    if (!["hook", "quote", "stat"].includes(first))
+      add("C01", at(0, first), `cold open (first scene is ${first})`, `make scenes[0] {"type":"hook","text":"..."} or open with a quote/stat`);
+    if (last !== "outro")
+      add("C01", at(scenes.length - 1, last), "no outro/cta, viewers get no next step", `make the last scene {"type":"outro","text":"...","cta":"..."}`);
+  }
+
+  // C02 length
+  if (scenes.length && scenes.length < 3)
+    add("C02", "spec", `${scenes.length} scenes`, "merge or add scenes so there are 3–8");
+  if (scenes.length > 8)
+    add("C02", "spec", `${scenes.length} scenes`, "cut to 8 scenes or fewer");
+  if (durs && durs.length) {
+    const total = durs.reduce((a, b) => a + b, 0);
+    if (total < 12) add("C02", "spec", `estimated total ${total.toFixed(2)} s`, `total under 12 s (is ${total.toFixed(2)}); add a scene or lengthen text`);
+    if (total > 60) add("C02", "spec", `estimated total ${total.toFixed(2)} s`, `total over 60 s (is ${total.toFixed(2)}); cut scenes or shorten text`);
+  }
+
+  scenes.forEach((s, i) => {
+    const where = at(i, s?.type);
+    // C03 bars highlight
+    if (s?.type === "bars" && Array.isArray(s.items) && s.items.length > 1) {
+      const big = s.items.reduce((b, it, j) => (it.value > s.items[b].value ? j : b), 0);
+      const small = s.items.reduce((b, it, j) => (it.value < s.items[b].value ? j : b), 0);
+      if (s.highlight === undefined)
+        add("C03", where, "no highlight", `add "highlight": ${big} (largest value is ${s.items[big].label})`);
+      else if (s.items.some((it) => it.value !== s.items[small].value) && s.highlight === small && small !== big)
+        add("C03", where, `highlight ${s.highlight} points at the smallest value (${s.items[small].label})`, `set "highlight": ${big} (largest value is ${s.items[big].label})`);
+      else if (s.highlight !== big)
+        add("C03", where, `note: highlight ${s.highlight} (${s.items[s.highlight]?.label}) is not the largest value`, `set "highlight": ${big} (largest value is ${s.items[big].label})`);
+    }
+    // C04 words
+    if (s?.type === "hook" && wordsOf(s.text) > 9)
+      add("C04", where, `hook is ${wordsOf(s.text)} words`, `rewrite "text" to 9 words or fewer`);
+    if (s?.type === "kinetic" && Array.isArray(s.lines))
+      s.lines.forEach((line, j) => { if (wordsOf(line) > 4)
+        add("C04", where, `line ${j + 1} "${line}" is ${wordsOf(line)} words`, `split or trim lines[${j}] to 4 words or fewer`); });
+    if (s?.type === "steps" && Array.isArray(s.items))
+      s.items.forEach((item, j) => { if (wordsOf(item) > 7)
+        add("C04", where, `step ${j + 1} "${item}" is ${wordsOf(item)} words`, `split or trim items[${j}] to 7 words or fewer`); });
+    if (s?.type === "quote" && wordsOf(s.text) > 24)
+      add("C04", where, `quote is ${wordsOf(s.text)} words`, `trim "text" to 24 words or fewer`);
+    if (s?.type === "compare")
+      for (const sideKey of ["left", "right"]) {
+        const pts = s[sideKey]?.points;
+        if (Array.isArray(pts)) pts.forEach((p, j) => { if (wordsOf(p) > 6)
+          add("C04", where, `${sideKey} point ${j + 1} "${p}" is ${wordsOf(p)} words`, `trim ${sideKey}.points[${j}] to 6 words or fewer`); });
+      }
+    if (s?.type === "outro" && s.cta !== undefined && wordsOf(s.cta) > 5)
+      add("C04", where, `cta is ${wordsOf(s.cta)} words`, `trim "cta" to 5 words or fewer`);
+    // C05 emphasis
+    if (["hook", "outro", "quote"].includes(s?.type)) {
+      if (s.emphasis === undefined)
+        add("C05", where, "no emphasis word; pick the one word the scene is about", `add "emphasis": "<one word from ${s.type === "outro" ? "text" : "text"}>"`);
+      else if (wordsOf(s.emphasis) > 3)
+        add("C05", where, `emphasis "${s.emphasis}" is ${wordsOf(s.emphasis)} words`, `trim "emphasis" to 3 words or fewer`);
+    }
+    // C07 fx
+    if (Array.isArray(s.fx) && s.fx.length > 1)
+      add("C07", where, `${s.fx.length} fx presets on one scene`, `keep at most 1 fx preset in "fx" (has ${JSON.stringify(s.fx)})`);
+    if (Array.isArray(s.fx) && ["calm", "smooth"].includes(theme?.easing) && s.fx.some((f) => f === "glitch" || f === "rgbIn"))
+      add("C07", where, `fx ${s.fx.filter((f) => f === "glitch" || f === "rgbIn").join(", ")} fights the ${theme.easing} theme`, `remove glitch/rgbIn or pick a snap/pop theme`);
+    // C08 numbers
+    if (s?.type === "stat") {
+      if (s.label === undefined)
+        add("C08", where, "stat without label", `add "label": "<what the number is>"`);
+      if (Number.isFinite(s.value) && s.value > 100 && !s.prefix && !s.suffix)
+        add("C08", where, `value ${s.value} reads like a percentage over 100`, `add "suffix": "%" or "prefix": "Rp " so the unit is clear`);
+    }
+    if (s?.type === "bars" && Array.isArray(s.items)) {
+      const over = s.items.filter((it) => it.value > 100);
+      if (over.length) add("C08", where, `bar value(s) over 100 (${over.map((it) => it.label).join(", ")})`, `rescale values (e.g. thousands) or make the unit part of each label`);
+    }
+    if (s?.type === "donut" && Number.isFinite(s.value) && !Number.isInteger(s.value))
+      add("C08", where, `donut value ${s.value} has decimals`, `round "value" to a whole number`);
+    // C09 long hold
+    if (TEXT_TYPES.includes(s?.type) && s.duration !== undefined) {
+      const auto = durationOf({ ...s, duration: undefined }, theme);
+      if (s.duration > 2 * auto)
+        add("C09", where, `explicit duration ${s.duration}s is more than 2x the ${auto.toFixed(2)}s estimate; long hold, viewers scroll`, `remove "duration" or set it near ${auto.toFixed(2)}`);
+    }
+  });
+
+  // C07 spec-level fx
+  if (Array.isArray(spec?.fx) && spec.fx.length > 1)
+    add("C07", "spec", `${spec.fx.length} spec-level fx presets`, `keep at most 1 fx preset in spec "fx" (has ${JSON.stringify(spec.fx)})`);
+  if (Array.isArray(spec?.fx) && ["calm", "smooth"].includes(theme?.easing) && spec.fx.some((f) => f === "glitch" || f === "rgbIn"))
+    add("C07", "spec", `spec fx ${spec.fx.filter((f) => f === "glitch" || f === "rgbIn").join(", ")} fights the ${theme.easing} theme`, `remove glitch/rgbIn or pick a snap/pop theme`);
+
+  // C06 rhythm
+  for (let i = 0; i + 2 < scenes.length; i++) {
+    const t = scenes[i]?.type;
+    if (t === scenes[i + 1]?.type && t === scenes[i + 2]?.type && t !== "kinetic") {
+      add("C06", at(i, t), `three consecutive ${t} scenes`, `vary the scene types (e.g. insert a kinetic or steps scene)`);
+      break;
+    }
+  }
+  if (scenes.length > 4) {
+    for (let i = 0; i + 2 < scenes.length; i++) {
+      const b = (j) => scenes[j]?.bg ?? "base";
+      if (b(i) === b(i + 1) && b(i) === b(i + 2)) {
+        add("C06", at(i, scenes[i]?.type), `flat rhythm; three scenes on bg ${b(i)}`, `alternate bg base/ink/accent on the turn (set "bg" on scenes[${i + 1}])`);
+        break;
+      }
+    }
+  }
+
+  // C10 data-only
+  const dataScenes = scenes.filter((s) => ["stat", "bars", "donut"].includes(s?.type)).length;
+  if (dataScenes >= 3 && !scenes.some((s) => ["kinetic", "steps", "quote"].includes(s?.type)))
+    add("C10", "spec", `${dataScenes} data scenes: numbers without a line of meaning`, `add a kinetic, steps, or quote scene that says what the numbers mean`);
+
+  return out;
+}
+
+function check(file, strict) {
   const spec = readSpec(file);
   if (spec === undefined) return 1;
   const themes = loadThemes(), templates = loadTemplates();
-  const errors = validate(spec, themes);
+  const errors = validateSpec(spec, themes, dirname(file));
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
   const theme = resolveTheme(themes[spec.theme], spec, templates);
   const durs = sceneDurations(spec, theme);
   durs.forEach((d, i) => console.log(`${i + 1}  ${spec.scenes[i].type}  ${d.toFixed(2)}`));
   console.log(`total  ${totalDuration(durs).toFixed(2)}`);
+  const findings = lint(spec, theme, durs);
+  for (const f of findings) console.log(`${f.level.toUpperCase()}  ${f.code} ${f.scene}: ${f.message} → ${f.fix}`);
+  if (findings.some((f) => f.level === "error")) return 1;
+  if (strict && findings.length) return 2;
+  if (spec.audio) printAudioPlan(spec, dirname(file), totalDuration(durs), sceneStartsOf(durs), spec.scenes.length);
   return 0;
+}
+
+const SFX_EXTS = [".wav", ".m4a", ".mp3", ".ogg"];
+const FFMPEG = "/opt/homebrew/bin/ffmpeg";
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+const AUDIO_EXT = /\.(wav|m4a|mp3|ogg)$/i;
+
+const sfxDir = () => new URL("../assets/sfx/", import.meta.url).pathname;
+
+// name resolves to assets/sfx/<name>.<ext>, assets/sfx/beds/<name>.<ext>, else spec-relative path
+export function resolveSfxFile(name, specDir) {
+  if (typeof name !== "string" || name.trim() === "") return undefined;
+  if (name.includes("/")) return resolve(specDir, name);
+  const dir = sfxDir();
+  for (const base of [join(dir, name), join(dir, "beds", name)])
+    for (const ext of SFX_EXTS) if (existsSync(base + ext)) return base + ext;
+  return resolve(specDir, name);
+}
+
+const sfxGainOk = (g) => g === undefined || (Number.isFinite(g) && g >= -40 && g <= 0);
+
+// pure: [{file, at, gain, label}] with absolute times; throws Error on bad input
+export function planSfx(audio, specDir, totalSeconds, sceneStarts) {
+  return (audio.sfx || []).map((s, i) => {
+    const label = `audio.sfx[${i}]`;
+    const at = s.scene !== undefined ? sceneStarts[s.scene - 1] : s.at;
+    if (at === undefined || !Number.isFinite(at)) throw new Error(`${label}: needs a finite "at" or a "scene"`);
+    const file = resolveSfxFile(s.name, specDir);
+    if (file === undefined || !AUDIO_EXT.test(file) || !existsSync(file)) throw new Error(`${label}: cannot find "${s.name}" (looked in assets/sfx and assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+    return { file, at, gain: s.gain === undefined ? -6 : s.gain, label, name: s.name };
+  });
+}
+
+// input 0 is the silent video (added by muxAudio), audio inputs start at 1
+export function audioArgs(spec, specDir, totalSeconds, sceneStarts) {
+  const audio = spec?.audio;
+  if (!audio) return undefined;
+  const bed = audio.bed !== undefined ? resolveSfxFile(audio.bed, specDir) : undefined;
+  if (audio.bed !== undefined && (bed === undefined || !AUDIO_EXT.test(bed) || !existsSync(bed)))
+    throw new Error(`audio.bed: cannot find "${audio.bed}" (looked in assets/sfx/beds as .wav/.m4a/.mp3/.ogg, and next to the spec)`);
+  const sfx = planSfx(audio, specDir, totalSeconds, sceneStarts);
+  const inputArgs = [], parts = [];
+  if (bed) inputArgs.push("-stream_loop", "-1", "-t", String(totalSeconds), "-i", bed);
+  for (const s of sfx) inputArgs.push("-i", s.file);
+  if (bed) {
+    parts.push(`[1:a]volume=${audio.bedGain === undefined ? -20 : audio.bedGain}dB,afade=t=in:st=0:d=0.3,afade=t=out:st=${Math.max(0, totalSeconds - 0.8).toFixed(3)}:d=0.8[bed]`);
+    parts.push(`[bed]${sfx.length ? "apad" : "anull"}[b0]`);
+  }
+  sfx.forEach((s, i) => parts.push(`[${(bed ? 2 : 1) + i}:a]volume=${s.gain}dB,adelay=${Math.round(s.at * 1000)}:all=1[s${i}]`));
+  const labels = [(bed ? "[b0]" : ""), ...sfx.map((_, i) => `[s${i}]`)].filter(Boolean);
+  parts.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0,loudnorm=I=-18:TP=-1.5:LRA=11[aout]`);
+  return { inputArgs, filter: parts.join(";") };
+}
+
+export function probeDuration(file) {
+  const r = spawnSync(FFPROBE, ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", file], { encoding: "utf8" });
+  const d = r.status === 0 ? Number((r.stdout || "").trim()) : NaN;
+  return Number.isFinite(d) && d > 0 ? d : undefined;
+}
+
+// mutates the silent MP4 in place (tmp + rename). Returns true on success.
+export function muxAudio(out, spec, specDir, totalSeconds, sceneStarts) {
+  const plan = audioArgs(spec, specDir, totalSeconds, sceneStarts);
+  if (plan === undefined) return false;
+  const tmp = out.replace(/\.mp4$/, "") + ".tmp.mp4";
+  const args = ["-y", "-i", out, ...plan.inputArgs, "-filter_complex", plan.filter,
+    "-map", "0:v:0", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", tmp];
+  const r = spawnSync(FFMPEG, args, { encoding: "utf8" });
+  if (r.status !== 0) {
+    rmSync(tmp, { force: true });
+    throw new Error(`audio mux failed: ${((r.stderr || "").split(/\r?\n/).filter(Boolean).at(-1)) || r.error?.message || "ffmpeg failed to start"}`);
+  }
+  renameSync(tmp, out);
+  return true;
+}
+
+function sceneStartsOf(durs) {
+  const starts = []; let at = 0;
+  for (const d of durs) { starts.push(at); at += d; }
+  return starts;
+}
+
+function printAudioPlan(spec, specDir, total, sceneStarts, sceneCount) {
+  const audio = spec.audio;
+  if (audio.bed !== undefined) {
+    const bed = resolveSfxFile(audio.bed, specDir);
+    const dur = bed ? probeDuration(bed) : undefined;
+    console.log(`audio  bed ${audio.bed}${dur ? `  ${dur.toFixed(2)}s` : ""}`);
+  }
+  for (const s of planSfx(audio, specDir, total, sceneStarts)) console.log(`audio  sfx ${s.name}  ${s.at.toFixed(2)}s`);
 }
 
 function render(file) {
@@ -376,6 +698,12 @@ function render(file) {
     }
     const total = totalDuration(res.durs);
     console.log(`total  ${total.toFixed(2)}`);
+    if (spec.audio) {
+      let at = 0; const starts = res.durs.map((d) => { const s = at; at += d; return s; });
+      try { muxAudio(out, spec, dirname(file), total, starts); }
+      catch (err) { console.error(err.message); return 1; }
+      console.log(`audio: muxed ${spec.audio.sfx?.length || 0} sfx + bed`);
+    } else console.log("audio: none");
     console.log(out);
     return 0;
   } finally {
@@ -389,7 +717,7 @@ function preview(file) {
   rmSync(paths(file).sheet, {force:true});
   const spec = readSpec(file);
   if (spec === undefined) return {code:1};
-  const themes = loadThemes(), templates = loadTemplates(), errors = validate(spec, themes);
+  const themes = loadThemes(), templates = loadTemplates(), errors = validateSpec(spec, themes, dirname(file));
   if (errors.length) { for (const m of errors) console.error(m); return {code:1}; }
   const theme = resolveTheme(themes[spec.theme], spec, templates), durs = sceneDurations(spec, theme);
   const { project, sheet } = paths(file);
@@ -441,7 +769,7 @@ function newSpec(theme, out) {
 
 if (isMain()) {
   const [cmd, arg, out] = process.argv.slice(2);
-  if (cmd === "check" && arg) process.exitCode = check(arg);
+  if (cmd === "check" && arg) process.exitCode = check(arg, process.argv.includes("--strict"));
   else if (cmd === "preview" && arg) process.exitCode = preview(arg).code;
   else if (cmd === "render" && arg) process.exitCode = render(arg);
   else if (cmd === "themes") process.exitCode = themes();

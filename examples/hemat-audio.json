@@ -1,0 +1,20 @@
+{
+  "theme": "reel",
+  "out": "hemat-audio.mp4",
+  "audio": {
+    "bed": "rain",
+    "bedGain": -24,
+    "sfx": [
+      {"at": 0.2, "name": "impactBell_heavy_000", "gain": -10},
+      {"scene": 2, "name": "keypress-001", "gain": -8},
+      {"scene": 4, "name": "chips-collide-1"}
+    ]
+  },
+  "scenes": [
+    {"type": "hook",  "text": "Gaji naik, tabungan tetap?", "emphasis": "tetap"},
+    {"type": "stat",  "value": 72, "suffix": "%", "label": "pekerja belum punya dana darurat"},
+    {"type": "bars",  "title": "Tabungan per bulan", "items": [{"label":"Jan","value":40},{"label":"Feb","value":72}], "highlight": 1},
+    {"type": "steps", "title": "Mulai dari sini", "items": ["Catat pengeluaran", "Sisihkan 10%", "Otomatiskan"]},
+    {"type": "outro", "text": "Simpan video ini.", "cta": "Follow untuk tips lain"}
+  ]
+}

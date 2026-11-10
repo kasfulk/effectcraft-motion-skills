@@ -14,6 +14,10 @@ Fields: `look`, `size`, `bg`, `ink`, `accent`, `font_head`, `font_body`, `handle
 
 `size` must be one of the keys in `SLIDE_SIZES`; `drawing` must be `cover`, `every`, `some`, or empty. Both are validated, so a typo fails instead of silently falling back to `3:4`.
 
+## Deck-level overrides
+
+A deck spec may set `handle` (string) to override the template's watermark handle for this run — e.g. `"handle": "@yourbrand"`. It replaces `@yourpage` on every slide. Other template fields (`bg`, `ink`, `accent`, fonts, `progress`, `size`) are template-only and cannot be overridden from a deck.
+
 ## `template` in a video spec
 
 A video spec may also name a template:
