@@ -339,7 +339,132 @@ function readSpec(file) {
   catch (err) { console.error(`${file}: ${err.message}`); return undefined; }
 }
 
-function check(file) {
+const wordsOf = (t) => String(t ?? "").trim().split(/\s+/).filter(Boolean).length;
+
+export function lint(spec, theme, durs) {
+  const out = [];
+  const scenes = Array.isArray(spec?.scenes) ? spec.scenes : [];
+  const at = (i, type) => `scenes[${i}] (${type})`;
+  const add = (code, scene, message, fix) => out.push({ code, scene, level: "warn", message, fix });
+
+  // C01 structure
+  if (scenes.length) {
+    const first = scenes[0]?.type, last = scenes[scenes.length - 1]?.type;
+    if (!["hook", "quote", "stat"].includes(first))
+      add("C01", at(0, first), `cold open (first scene is ${first})`, `make scenes[0] {"type":"hook","text":"..."} or open with a quote/stat`);
+    if (last !== "outro")
+      add("C01", at(scenes.length - 1, last), "no outro/cta, viewers get no next step", `make the last scene {"type":"outro","text":"...","cta":"..."}`);
+  }
+
+  // C02 length
+  if (scenes.length && scenes.length < 3)
+    add("C02", "spec", `${scenes.length} scenes`, "merge or add scenes so there are 3–8");
+  if (scenes.length > 8)
+    add("C02", "spec", `${scenes.length} scenes`, "cut to 8 scenes or fewer");
+  if (durs && durs.length) {
+    const total = durs.reduce((a, b) => a + b, 0);
+    if (total < 12) add("C02", "spec", `estimated total ${total.toFixed(2)} s`, `total under 12 s (is ${total.toFixed(2)}); add a scene or lengthen text`);
+    if (total > 60) add("C02", "spec", `estimated total ${total.toFixed(2)} s`, `total over 60 s (is ${total.toFixed(2)}); cut scenes or shorten text`);
+  }
+
+  scenes.forEach((s, i) => {
+    const where = at(i, s?.type);
+    // C03 bars highlight
+    if (s?.type === "bars" && Array.isArray(s.items) && s.items.length > 1) {
+      const big = s.items.reduce((b, it, j) => (it.value > s.items[b].value ? j : b), 0);
+      const small = s.items.reduce((b, it, j) => (it.value < s.items[b].value ? j : b), 0);
+      if (s.highlight === undefined)
+        add("C03", where, "no highlight", `add "highlight": ${big} (largest value is ${s.items[big].label})`);
+      else if (s.items.some((it) => it.value !== s.items[small].value) && s.highlight === small && small !== big)
+        add("C03", where, `highlight ${s.highlight} points at the smallest value (${s.items[small].label})`, `set "highlight": ${big} (largest value is ${s.items[big].label})`);
+      else if (s.highlight !== big)
+        add("C03", where, `note: highlight ${s.highlight} (${s.items[s.highlight]?.label}) is not the largest value`, `set "highlight": ${big} (largest value is ${s.items[big].label})`);
+    }
+    // C04 words
+    if (s?.type === "hook" && wordsOf(s.text) > 9)
+      add("C04", where, `hook is ${wordsOf(s.text)} words`, `rewrite "text" to 9 words or fewer`);
+    if (s?.type === "kinetic" && Array.isArray(s.lines))
+      s.lines.forEach((line, j) => { if (wordsOf(line) > 4)
+        add("C04", where, `line ${j + 1} "${line}" is ${wordsOf(line)} words`, `split or trim lines[${j}] to 4 words or fewer`); });
+    if (s?.type === "steps" && Array.isArray(s.items))
+      s.items.forEach((item, j) => { if (wordsOf(item) > 7)
+        add("C04", where, `step ${j + 1} "${item}" is ${wordsOf(item)} words`, `split or trim items[${j}] to 7 words or fewer`); });
+    if (s?.type === "quote" && wordsOf(s.text) > 24)
+      add("C04", where, `quote is ${wordsOf(s.text)} words`, `trim "text" to 24 words or fewer`);
+    if (s?.type === "compare")
+      for (const sideKey of ["left", "right"]) {
+        const pts = s[sideKey]?.points;
+        if (Array.isArray(pts)) pts.forEach((p, j) => { if (wordsOf(p) > 6)
+          add("C04", where, `${sideKey} point ${j + 1} "${p}" is ${wordsOf(p)} words`, `trim ${sideKey}.points[${j}] to 6 words or fewer`); });
+      }
+    if (s?.type === "outro" && s.cta !== undefined && wordsOf(s.cta) > 5)
+      add("C04", where, `cta is ${wordsOf(s.cta)} words`, `trim "cta" to 5 words or fewer`);
+    // C05 emphasis
+    if (["hook", "outro", "quote"].includes(s?.type)) {
+      if (s.emphasis === undefined)
+        add("C05", where, "no emphasis word; pick the one word the scene is about", `add "emphasis": "<one word from ${s.type === "outro" ? "text" : "text"}>"`);
+      else if (wordsOf(s.emphasis) > 3)
+        add("C05", where, `emphasis "${s.emphasis}" is ${wordsOf(s.emphasis)} words`, `trim "emphasis" to 3 words or fewer`);
+    }
+    // C07 fx
+    if (Array.isArray(s.fx) && s.fx.length > 1)
+      add("C07", where, `${s.fx.length} fx presets on one scene`, `keep at most 1 fx preset in "fx" (has ${JSON.stringify(s.fx)})`);
+    if (Array.isArray(s.fx) && ["calm", "smooth"].includes(theme?.easing) && s.fx.some((f) => f === "glitch" || f === "rgbIn"))
+      add("C07", where, `fx ${s.fx.filter((f) => f === "glitch" || f === "rgbIn").join(", ")} fights the ${theme.easing} theme`, `remove glitch/rgbIn or pick a snap/pop theme`);
+    // C08 numbers
+    if (s?.type === "stat") {
+      if (s.label === undefined)
+        add("C08", where, "stat without label", `add "label": "<what the number is>"`);
+      if (Number.isFinite(s.value) && s.value > 100 && !s.prefix && !s.suffix)
+        add("C08", where, `value ${s.value} reads like a percentage over 100`, `add "suffix": "%" or "prefix": "Rp " so the unit is clear`);
+    }
+    if (s?.type === "bars" && Array.isArray(s.items)) {
+      const over = s.items.filter((it) => it.value > 100);
+      if (over.length) add("C08", where, `bar value(s) over 100 (${over.map((it) => it.label).join(", ")})`, `rescale values (e.g. thousands) or make the unit part of each label`);
+    }
+    if (s?.type === "donut" && Number.isFinite(s.value) && !Number.isInteger(s.value))
+      add("C08", where, `donut value ${s.value} has decimals`, `round "value" to a whole number`);
+    // C09 long hold
+    if (TEXT_TYPES.includes(s?.type) && s.duration !== undefined) {
+      const auto = durationOf({ ...s, duration: undefined }, theme);
+      if (s.duration > 2 * auto)
+        add("C09", where, `explicit duration ${s.duration}s is more than 2x the ${auto.toFixed(2)}s estimate; long hold, viewers scroll`, `remove "duration" or set it near ${auto.toFixed(2)}`);
+    }
+  });
+
+  // C07 spec-level fx
+  if (Array.isArray(spec?.fx) && spec.fx.length > 1)
+    add("C07", "spec", `${spec.fx.length} spec-level fx presets`, `keep at most 1 fx preset in spec "fx" (has ${JSON.stringify(spec.fx)})`);
+  if (Array.isArray(spec?.fx) && ["calm", "smooth"].includes(theme?.easing) && spec.fx.some((f) => f === "glitch" || f === "rgbIn"))
+    add("C07", "spec", `spec fx ${spec.fx.filter((f) => f === "glitch" || f === "rgbIn").join(", ")} fights the ${theme.easing} theme`, `remove glitch/rgbIn or pick a snap/pop theme`);
+
+  // C06 rhythm
+  for (let i = 0; i + 2 < scenes.length; i++) {
+    const t = scenes[i]?.type;
+    if (t === scenes[i + 1]?.type && t === scenes[i + 2]?.type && t !== "kinetic") {
+      add("C06", at(i, t), `three consecutive ${t} scenes`, `vary the scene types (e.g. insert a kinetic or steps scene)`);
+      break;
+    }
+  }
+  if (scenes.length > 4) {
+    for (let i = 0; i + 2 < scenes.length; i++) {
+      const b = (j) => scenes[j]?.bg ?? "base";
+      if (b(i) === b(i + 1) && b(i) === b(i + 2)) {
+        add("C06", at(i, scenes[i]?.type), `flat rhythm; three scenes on bg ${b(i)}`, `alternate bg base/ink/accent on the turn (set "bg" on scenes[${i + 1}])`);
+        break;
+      }
+    }
+  }
+
+  // C10 data-only
+  const dataScenes = scenes.filter((s) => ["stat", "bars", "donut"].includes(s?.type)).length;
+  if (dataScenes >= 3 && !scenes.some((s) => ["kinetic", "steps", "quote"].includes(s?.type)))
+    add("C10", "spec", `${dataScenes} data scenes: numbers without a line of meaning`, `add a kinetic, steps, or quote scene that says what the numbers mean`);
+
+  return out;
+}
+
+function check(file, strict) {
   const spec = readSpec(file);
   if (spec === undefined) return 1;
   const themes = loadThemes(), templates = loadTemplates();
@@ -349,6 +474,10 @@ function check(file) {
   const durs = sceneDurations(spec, theme);
   durs.forEach((d, i) => console.log(`${i + 1}  ${spec.scenes[i].type}  ${d.toFixed(2)}`));
   console.log(`total  ${totalDuration(durs).toFixed(2)}`);
+  const findings = lint(spec, theme, durs);
+  for (const f of findings) console.log(`${f.level.toUpperCase()}  ${f.code} ${f.scene}: ${f.message} → ${f.fix}`);
+  if (findings.some((f) => f.level === "error")) return 1;
+  if (strict && findings.length) return 2;
   return 0;
 }
 
@@ -441,7 +570,7 @@ function newSpec(theme, out) {
 
 if (isMain()) {
   const [cmd, arg, out] = process.argv.slice(2);
-  if (cmd === "check" && arg) process.exitCode = check(arg);
+  if (cmd === "check" && arg) process.exitCode = check(arg, process.argv.includes("--strict"));
   else if (cmd === "preview" && arg) process.exitCode = preview(arg).code;
   else if (cmd === "render" && arg) process.exitCode = render(arg);
   else if (cmd === "themes") process.exitCode = themes();
