@@ -1,6 +1,6 @@
 # effectcraft-motion
 
-Skill untuk mengubah spec JSON menjadi video motion graphics 9:16 berbentuk MP4 melalui `effectcraft-cli`. Pipeline ini memvalidasi scene, membuat project EffectCraft, menghasilkan contact sheet, lalu merender video.
+Skill untuk mengubah spec JSON menjadi video motion graphics 9:16 berbentuk MP4 melalui `effectcraft-cli`, atau menjadi deck carousel 3:4/4:5/1:1 berupa PNG per slide. Pipeline ini memvalidasi scene, membuat project EffectCraft, menghasilkan contact sheet, lalu merender video.
 
 ## Kebutuhan
 
@@ -18,6 +18,9 @@ ln -s "$PWD" ~/.claude/skills/effectcraft-motion
 ## Mulai cepat
 
 ```sh
+node bin/ecm.mjs themes                    # daftar 70 theme
+node bin/ecm.mjs new reel spec.json         # spec starter untuk theme reel
+node bin/ecm.mjs slides deck.json --out deck-slides/   # render satu PNG per slide
 node bin/ecm.mjs check examples/hemat.json
 taskpolicy -b nice -n 19 node bin/ecm.mjs preview examples/hemat.json
 taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
@@ -29,6 +32,7 @@ Referensi:
 
 - [Scene types](reference/scenes.md)
 - [Themes](reference/themes.md)
+- [Templates](reference/templates.md)
 - [CLI dan pitfall](reference/cli.md)
 
 Tes smoke lengkap memakai engine secara serial:

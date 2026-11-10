@@ -1,17 +1,3 @@
-function emphasisIndex(str, word) {
-  return word ? String(str).toLowerCase().indexOf(String(word).toLowerCase()) : -1;
-}
-function wordBox(res, word) {
-  var idx = -1, prefix = '', line = '', low = String(word).toLowerCase();
-  for (var i = 0; i < res.lines.length; i++) {
-    var at = res.lines[i].toLowerCase().indexOf(low);
-    if (at >= 0) { idx = i; prefix = res.lines[i].slice(0, at); line = res.lines[i].slice(at, at + word.length); break; }
-  }
-  if (idx < 0) return null;
-  var lineH = res.h / res.lines.length, lineW = measure(res.lines[idx], res.font, res.size);
-  var x = res.x + (res.align === 'center' ? -lineW / 2 : 0) + measure(prefix, res.font, res.size);
-  return {x:x, y:res.y + idx * lineH, w:measure(line, res.font, res.size), h:lineH};
-}
 function contentTop(comp, theme, scene) {
   return scene.title ? title(comp, theme, scene).bottom + 40 : 300;
 }
@@ -96,8 +82,9 @@ var SCENES = {
   },
   stat: function (comp, theme, scene, dur) {
     var ink = textColor(theme, scene), finalValue = (scene.prefix || '') + fmtID(scene.value) + (scene.suffix || '');
-    var size = 300; while (size > 120 && measure(finalValue, theme.fonts.display, size) > 850) size = Math.max(120, Math.floor(size * 0.94));
-    var v = text(comp, finalValue, {font:theme.fonts.display, size:size, min:120, color:ink, align:'center', x:CX, y:820, maxW:850, maxH:400, name:'value'});
+    var size = 300; while (size > 72 && measure(finalValue, theme.fonts.display, size) > 850) size = Math.max(72, Math.floor(size * 0.94));
+    // The counter expression renders one line, so size the value as one line: a wrapped fit would overflow once the expression replaces the text.
+    var v = text(comp, finalValue, {font:theme.fonts.display, size:size, min:size, color:ink, align:'center', x:CX, y:820, maxW:1e6, maxH:400, name:'value'});
     v.layer.property('Source Text').expression = counterExpr(0.2, 1.4, scene.value, scene.prefix || '', scene.suffix || '');
     animate(v.layer.transform.scale, 0.2, 0.65, [0,0], [100,100], theme.easing);
     var label = scene.label ? text(comp, scene.label, {font:theme.fonts.body, size:56, min:48, color:ink, align:'center', x:CX, y:v.y + v.h + 40, maxW:850, maxH:150, name:'label'}) : null;

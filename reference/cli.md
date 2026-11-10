@@ -67,6 +67,31 @@ another render is running (remove /tmp/ecm-render.lock if not)
 
 If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Other exact errors include the final engine error and `missing ECM output`. `total` is the final length (matches the MP4); the `out` directory is created if missing. A render always releases `/tmp/ecm-render.lock` on exit.
 
+### `new`
+
+```sh
+node bin/ecm.mjs new reel spec.json
+```
+
+Writes a starter spec for the named theme. Creates a minimal spec with one `hook`, one `stat`, and one `outro` scene, then validates it. Prints the output path on success. The file is written to `out` or to `<theme>.json` in the current directory.
+
+### `themes`
+
+```sh
+node bin/ecm.mjs themes
+node bin/ecm.mjs themes --json
+```
+
+Prints one tab-separated line per theme: id, label, align, base, ink, accent, display font, motifs, fx. With `--json`, prints the whole `themes.json` object instead.
+
+### `slides`
+
+```sh
+node bin/ecm.mjs slides deck.json --out deck-slides/
+```
+
+Renders one PNG per slide at the template's size. See [templates.md](templates.md) for deck spec shape and field descriptions.
+
 ## Machine safety
 
 Run only one EffectCraft engine process at a time. Prefix runs with:
