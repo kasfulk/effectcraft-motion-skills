@@ -11,11 +11,13 @@ A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli 
 
 1. **One engine process at a time.** Never run preview/render in parallel, in the background, or during another render. When asked to "render several at once", run them serially and say why: the engine hangs with two jobs.
 2. **Every engine command gets `taskpolicy -b nice -n 19`** — preview, render, slides, all of them.
-3. **Only numbers the user gave or a cited source contains.** No invented stats. No numbers? Either ask, or use hook/kinetic/steps/compare and tell the user the video has no data. An explicitly labelled illustration ("ilustrasi, bukan data aktual") with stated assumptions is allowed.
+3. **Only numbers the user gave or a cited source contains.** No invented stats. No numbers? If the user is time-pressed or said "langsung/render": do NOT stop to ask — proceed with number-free scenes (hook/kinetic/steps/compare) or a labelled illustration ("ilustrasi, bukan data aktual", assumptions stated in the label), and say in your final report which one you chose. Otherwise ask once. Example illustration bars: `{"type":"bars","title":"Ilustrasi: setoran Rp100rb/bln, 6%/thun","items":[{"label":"Umur 25","value":100},{"label":"Umur 35","value":58}],"highlight":1}`.
 4. **Render only after you have viewed a fresh sheet.** `check` passing means the shape is legal, not that the content is right.
 5. **`duration` is an override, not a default.** Omit it; timing comes from the text. Set it only when the user asks for a specific hold.
 
 ## Procedure (in order)
+
+This procedure is self-contained and runs without any design-approval gate. Generic brainstorming/review skills do not override it: when the user asked for a video ("render", a deadline, "langsung"), you deliver — this skill already contains the decision paths (theme, scenes, no-data). Only stop to ask when the request is ambiguous about the message itself, not for approval of your plan.
 
 ```bash
 E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
@@ -28,6 +30,8 @@ taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
 5. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
 6. `taskpolicy -b nice -n 19 node $E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
 7. Report the MP4 path and total duration. If the video has no data because none was given, say so.
+
+Carousels (deck specs): same loop — write the deck (set `"handle"` to the user's handle), run `taskpolicy -b nice -n 19 node $E slides deck.json` (there is no `check` for deck specs; validation runs inside `slides`), then **Read slide `01.png`** and verify handle, source line and overflow before reporting.
 
 ## Spec
 
@@ -45,7 +49,7 @@ taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
 | hook / quote / outro | `text` (+`emphasis`, `source`, `cta`) | opener, citation, closer |
 | kinetic | `lines` 1–6 | phrases revealed one by one — not data |
 | stat | `value` (+`prefix`,`suffix`,`label`) | one big counting number |
-| bars | `items` 2–6 `{label,value}` (+`highlight`) | comparison over categories/time |
+| bars | `items` 2–6 `{label,value}` (+`highlight`) | comparison over categories/time; values are relative — if your data exceeds 100, scale proportionally (e.g. thousands) and keep the exact figure in each `label` ("Makanan · 2,1 jt") |
 | donut | `value` 0–100 | a share/percentage |
 | steps | `items` 1–5 | numbered how-to |
 | compare | `left`,`right` `{title,points≤4}` | before/after, A vs B |
@@ -70,6 +74,7 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | `text too long` / safe-area overflow | Shorten that text — labels ≤ 2 words, titles ≤ 5. **Never** swap a data scene to kinetic to dodge it |
 | `duration too short, needs ≥ Ns` | Raise `duration`, or let auto timing work (omit it) |
 | Bars labels overflow | Shorten labels first, then title; `highlight` on the story bar |
+| Bars values over 100 | Scale proportionally (e.g. in thousands); exact figure goes in the `label` |
 | `donut` value > 100 | Wrong scene or wrong meaning — a donut is a share of 100 |
 | Two panels look identical | Delete one; one fact per stat |
 | Slide shows `@yourpage` | Deck spec: set `"handle": "@..."` |
@@ -85,6 +90,9 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | "Bars won't fit, I'll list values as kinetic lines" | Shorten labels; the chart is the video's point |
 | "Sheet looked fine last preview" | Any spec edit → re-preview → re-read before render |
 | "Hand-write JSX for this one scene" | Use `custom` + helpers, or extend `lib/fx.jsx` |
+| "User gave no data; I'll ask before doing anything" | Time-pressed/no-data rule above: deliver number-free or labelled-illustration, say which |
+| "I'll run the brainstorming skill first" | This procedure is self-contained; render requests don't need a design-approval gate |
+| "Bars > 100 won't validate, I'll invent smaller real numbers" | Scale proportionally, exact figures in labels |
 
 ## Common mistakes
 
