@@ -34,6 +34,9 @@ Referensi:
 - [Themes](reference/themes.md)
 - [Templates](reference/templates.md)
 - [CLI dan pitfall](reference/cli.md)
+- [Craft, story shapes and pacing](reference/craft.md)
+- [Sound: bed and sfx rules](reference/sound.md)
+- [Cold-reader review of the contact sheet](reference/review.md)
 
 Tes smoke lengkap memakai engine secara serial:
 
