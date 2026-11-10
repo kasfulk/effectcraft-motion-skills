@@ -12,11 +12,31 @@ const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
 const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx"]);
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
+export const THEME_COLOR_KEYS = ["base","ink","accent","muted","data","sheet","marker"];
+export const THEME_FONT_KEYS = ["display","body","label","quote","arabic"];
+
+const tplLayer = (theme, tpl) => {
+  const patch = { colors: { ...theme.colors }, fonts: { ...theme.fonts } };
+  for (const [k, v] of Object.entries({ base: tpl.bg, ink: tpl.ink, accent: tpl.accent }))
+    if (v != null) patch.colors[k] = v;
+  for (const [k, v] of Object.entries({ display: tpl.font_head, body: tpl.font_body, label: tpl.font_body }))
+    if (v != null) patch.fonts[k] = v;
+  if (tpl.align != null) patch.align = tpl.align;
+  return patch;
+};
+
+export const resolveTheme = (theme, spec, templates) => {
+  const t = spec.template && templates ? { ...theme, ...tplLayer(theme, templates[spec.template]) } : theme;
+  return { ...t, colors: { ...t.colors, ...(spec.colors || {}) }, fonts: { ...t.fonts, ...(spec.fonts || {}) } };
+};
+const HEX = /^#[0-9a-f]{6}$/i;
+const plainObj = (x) => x && typeof x === "object" && !Array.isArray(x);
 const fxOk = (f) => f === undefined || (Array.isArray(f) && f.every((n) => FX_NAMES.includes(n)));
 const FX_ERR = `fx must be an array of: ${FX_NAMES.join(", ")}`;
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 export const loadThemes = () => JSON.parse(read("../themes.json"));
+export const loadTemplates = () => JSON.parse(read("../templates.json"));
 
 const str = (x) => typeof x === "string" && x.trim() !== "";
 const strs = (a, min, max) => Array.isArray(a) && a.length >= min && a.length <= max && a.every(str);
@@ -79,7 +99,30 @@ export function validate(spec, themes) {
   if (!spec || typeof spec !== "object") return ["spec: must be an object"];
   const errors = [];
   if (!Object.hasOwn(themes, spec.theme)) errors.push(`theme: unknown ${JSON.stringify(spec.theme)} (${Object.keys(themes).join(", ")})`);
+  if (spec.template !== undefined) {
+    const templates = loadTemplates();
+    if (typeof spec.template !== "string" || !Object.hasOwn(templates, spec.template)) errors.push(`template: unknown ${JSON.stringify(spec.template)} (see templates.json)`);
+  }
+  if (Object.hasOwn(themes, spec.theme)) {
+    const t = themes[spec.theme];
+    if (t.fx !== undefined && (!Array.isArray(t.fx) || !t.fx.every((n) => FX_NAMES.includes(n)))) errors.push(`theme ${JSON.stringify(spec.theme)}: fx must be an array of: ${FX_NAMES.join(", ")}`);
+    if (t.motifs !== undefined && !(Array.isArray(t.motifs) && t.motifs.every((m) => typeof m === "string"))) errors.push(`theme ${JSON.stringify(spec.theme)}: motifs must be an array of strings`);
+  }
   if (!fxOk(spec.fx)) errors.push(FX_ERR);
+  if (spec.colors !== undefined) {
+    if (!plainObj(spec.colors)) errors.push("colors: must be a plain object");
+    else for (const [k, v] of Object.entries(spec.colors)) {
+      if (!THEME_COLOR_KEYS.includes(k)) errors.push(`colors: unknown key "${k}"`);
+      else if (typeof v !== "string" || !HEX.test(v)) errors.push(`colors.${k}: must be #rrggbb`);
+    }
+  }
+  if (spec.fonts !== undefined) {
+    if (!plainObj(spec.fonts)) errors.push("fonts: must be a plain object");
+    else for (const [k, v] of Object.entries(spec.fonts)) {
+      if (!THEME_FONT_KEYS.includes(k)) errors.push(`fonts: unknown key "${k}"`);
+      else if (!str(v)) errors.push(`fonts.${k}: must be a non-empty string`);
+    }
+  }
   if (spec.out !== undefined && !(typeof spec.out === "string" && spec.out.trim() !== "" && spec.out.endsWith(".mp4"))) errors.push("out: must be a .mp4 path");
   if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) {
     errors.push("scenes: must be a non-empty array");
@@ -89,6 +132,32 @@ export function validate(spec, themes) {
     const type = s?.type;
     const msgs = SCENE_TYPES.includes(type) ? sceneErrors(s) : ["type unknown"];
     for (const m of msgs) errors.push(`scene ${i + 1} (${type}): ${m}`);
+  });
+  return errors;
+}
+
+export function validateDeck(deck, templates) {
+  if (!deck || typeof deck !== "object") return ["deck: must be an object"];
+  const errors = [];
+  if (!str(deck.template) || !Object.hasOwn(templates, deck.template)) errors.push(`template: unknown ${JSON.stringify(deck.template)} (see templates.json)`);
+  const themes = loadThemes();
+  const tpl = templates[deck.template];
+  if (tpl) {
+    if (!Object.hasOwn(SLIDE_SIZES, tpl.size)) errors.push(`template "${deck.template}": size must be one of ${Object.keys(SLIDE_SIZES).join(", ")}`);
+    if (tpl.drawing !== undefined && !["", "cover", "every", "some"].includes(tpl.drawing)) errors.push(`template "${deck.template}": drawing must be cover, every, some, or empty`);
+  }
+  const theme = deck.theme ?? tpl?.style;
+  if (!Object.hasOwn(themes, theme)) errors.push(`theme: unknown ${JSON.stringify(theme)} (see themes.json)`);
+  if (deck.out !== undefined && !(typeof deck.out === "string" && deck.out.trim() !== "")) errors.push("out: must be a non-empty directory name");
+  if (!Array.isArray(deck.slides) || deck.slides.length === 0) {
+    errors.push("slides: must be a non-empty array (1–30)");
+    return errors;
+  }
+  if (deck.slides.length > 30) errors.push("slides: at most 30 entries");
+  deck.slides.forEach((s, i) => {
+    if (!s || typeof s !== "object" || !str(s.text)) errors.push(`slide ${i + 1}: text required`);
+    else for (const k of ["lead", "source", "emphasis"]) if (s[k] !== undefined && !str(s[k])) errors.push(`slide ${i + 1}: ${k} must be a non-empty string`);
+    if (s && s.emphasis !== undefined && str(s.text) && !s.text.toLowerCase().includes(s.emphasis.toLowerCase())) errors.push(`slide ${i + 1}: emphasis not found in text`);
   });
   return errors;
 }
@@ -139,7 +208,8 @@ const MAIN = String.raw`
       var hasContent = false;
       for (var li = 1; li <= c.numLayers; li++) if (c.layer(li).comment !== 'bg') { hasContent = true; break; }
       if (!hasContent) throw new Error('renders blank');
-      entered = Math.max(entered, applyFx(c, THEME, (SPEC.fx || []).concat(scene.fx || []), entered));
+      var fxs = (THEME.fx || []).concat(SPEC.fx || [], scene.fx || []);
+      entered = Math.max(entered, applyFx(c, THEME, fxs, entered));
       checkSafe(c, entered);
     } catch (e) {
       var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
@@ -169,6 +239,87 @@ export function buildScript(spec, theme, durs) {
     MAIN,
   ].join("\n");
 }
+export const SLIDE_SIZES = { "3:4": [1080, 1440], "4:5": [1080, 1350], "1:1": [1080, 1080] };
+
+const SLIDES_MAIN = String.raw`
+(function () {
+  var W = SIZE[0], H = SIZE[1];
+  assertFonts(THEME);
+  var pre = [], at = 0;
+  for (var i = 0; i < SPEC.slides.length; i++) {
+    var c = app.project.items.addComp('P' + (i + 1), W, H, 1, 3, 30);
+    bgFor(c, THEME, 'base');
+    SLIDES.draw(c, TPL, THEME, SPEC.slides[i], i + 1, SPEC.slides.length, W, H);
+    pre.push(c);
+  }
+  var main = app.project.items.addComp('Main', W, H, 1, pre.length, 30);
+  for (var j = 0; j < pre.length; j++) { var l = main.layers.add(pre[j]); l.startTime = j; l.outPoint = j + 1; }
+  writeLn('ECM ' + JSON.stringify({count: pre.length}));
+})();
+`;
+
+export function buildSlidesScript(deck, tpl, theme, size) {
+  return [
+    `var SPEC = ${json(deck)};`,
+    `var TPL = ${json(tpl)};`,
+    `var THEME = ${json(theme)};`,
+    `var SIZE = ${json(size)};`,
+    read("../lib/core.jsx"),
+    read("../lib/slides.jsx"),
+    read("../lib/fx.jsx"),
+    SLIDES_MAIN,
+  ].join("\n");
+}
+
+function themes() {
+  const list = loadThemes();
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify(list, null, 2));
+    return 0;
+  }
+  for (const id of Object.keys(list).sort()) {
+    const t = list[id];
+    console.log([id, t.label, t.align, t.colors.base, t.colors.ink, t.colors.accent, t.fonts.display, (t.motifs || []).join(","), (t.fx || []).join(",")].join("\t"));
+  }
+  return 0;
+}
+
+function slides(file, outArg) {
+  const deck = readSpec(file);
+  if (deck === undefined) return 1;
+  const templates = loadTemplates();
+  const errors = validateDeck(deck, templates);
+  if (errors.length) { for (const m of errors) console.error(m); return 1; }
+  const tpl = templates[deck.template];
+  const themeId = deck.theme ?? tpl.style;
+  const theme = resolveTheme(loadThemes()[themeId], { template: deck.template }, templates);
+  const size = SLIDE_SIZES[tpl.size] || [1080, 1440];
+  const dir = dirname(file), base = basename(file, extname(file));
+  const project = join(dir, base + ".ecproj");
+  const outDir = resolve(dir, outArg || (deck.out ?? `${base}-slides`));
+  mkdirSync(outDir, { recursive: true });
+  const tmp = join(mkdtempSync(join(tmpdir(), "ecm-")), base + ".slides.jsx");
+  try {
+    writeFileSync(tmp, buildSlidesScript(deck, tpl, theme, size));
+    const built = spawnSync("effectcraft-cli", ["script", tmp, "--empty", "--save-as", project], { encoding: "utf8" });
+    if (built.status !== 0) {
+      const lines = (built.stderr || built.stdout || "").split(/\r?\n/).filter((l) => /:\d+:\d+: /.test(l));
+      console.error(lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, "") : (built.stderr || built.stdout || "").trim() || built.error?.message || "effectcraft-cli failed to start");
+      return 1;
+    }
+    for (let i = 0; i < deck.slides.length; i++) {
+      const png = join(outDir, String(i + 1).padStart(2, "0") + ".png");
+      const r = spawnSync("effectcraft-cli", ["render-frame", "--project", project, "--comp", "P" + (i + 1), "--time", "1.8", "--out", png], { encoding: "utf8" });
+      if (r.status !== 0) { console.error((r.stderr || r.stdout || "").trim() || r.error?.message || "effectcraft-cli failed to start"); return 1; }
+      const check = spawnSync("magick", [png, "-colorspace", "gray", "-format", "%[fx:standard_deviation]", "info:"], { encoding: "utf8" });
+      const deviation = Number((check.stdout || "").trim());
+      if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`slide ${i + 1}: blank check failed: ${(check.stderr || "").trim() || "magick failed"}`); return 1; }
+      if (deviation < 0.004) { console.error(`slide ${i + 1}: renders blank`); return 1; }
+    }
+    console.log(outDir);
+    return 0;
+  } finally { rmSync(tmp, { force: true }); rmSync(dirname(tmp), { recursive: true, force: true }); }
+}
 
 function paths(file) {
   const dir = dirname(file), base = basename(file, extname(file));
@@ -191,10 +342,10 @@ function readSpec(file) {
 function check(file) {
   const spec = readSpec(file);
   if (spec === undefined) return 1;
-  const themes = loadThemes();
+  const themes = loadThemes(), templates = loadTemplates();
   const errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
-  const theme = themes[spec.theme];
+  const theme = resolveTheme(themes[spec.theme], spec, templates);
   const durs = sceneDurations(spec, theme);
   durs.forEach((d, i) => console.log(`${i + 1}  ${spec.scenes[i].type}  ${d.toFixed(2)}`));
   console.log(`total  ${totalDuration(durs).toFixed(2)}`);
@@ -238,9 +389,9 @@ function preview(file) {
   rmSync(paths(file).sheet, {force:true});
   const spec = readSpec(file);
   if (spec === undefined) return {code:1};
-  const themes = loadThemes(), errors = validate(spec, themes);
+  const themes = loadThemes(), templates = loadTemplates(), errors = validate(spec, themes);
   if (errors.length) { for (const m of errors) console.error(m); return {code:1}; }
-  const theme = themes[spec.theme], durs = sceneDurations(spec, theme);
+  const theme = resolveTheme(themes[spec.theme], spec, templates), durs = sceneDurations(spec, theme);
   const { project, sheet } = paths(file);
   const base = basename(file, extname(file));
   const tmp = join(mkdtempSync(join(tmpdir(), 'ecm-')), base + '.build.jsx');
@@ -274,11 +425,35 @@ const isMain = () => {
   try { return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
   catch { return false; }
 };
+function newSpec(theme, out) {
+  const spec = { theme, out: `${theme}.mp4`, scenes: [
+    { type: "hook", text: "Tulis hook di sini" },
+    { type: "stat", value: 72, suffix: "%", label: "Tulis satu angka nyata" },
+    { type: "outro", text: "Simpan video ini.", cta: "Follow untuk tips lain" },
+  ]};
+  const themes = loadThemes(), errors = validate(spec, themes);
+  if (errors.length) { for (const m of errors) console.error(m); return 1; }
+  mkdirSync(dirname(out), {recursive: true});
+  writeFileSync(out, JSON.stringify(spec, null, 2) + "\n");
+  console.log(out);
+  return 0;
+}
 
 if (isMain()) {
-  const [cmd, arg] = process.argv.slice(2);
+  const [cmd, arg, out] = process.argv.slice(2);
   if (cmd === "check" && arg) process.exitCode = check(arg);
   else if (cmd === "preview" && arg) process.exitCode = preview(arg).code;
   else if (cmd === "render" && arg) process.exitCode = render(arg);
-  else { console.error("usage: ecm.mjs <check|preview|render> <spec>"); process.exitCode = 1; }
+  else if (cmd === "themes") process.exitCode = themes();
+  else if (cmd === "slides" && arg) {
+    let outArg;
+    const oi = process.argv.indexOf("--out");
+    if (oi !== -1) outArg = process.argv[oi + 1];
+    process.exitCode = slides(arg, outArg);
+  }
+  else if (cmd === "new" && arg) {
+    if (!Object.hasOwn(loadThemes(), arg)) { console.error(`theme: unknown ${JSON.stringify(arg)} (see reference/themes.md)`); process.exitCode = 1; }
+    else process.exitCode = newSpec(arg, resolve(process.cwd(), out || `${arg}.json`));
+  }
+  else { console.error("usage: ecm.mjs <check|preview|render|themes|slides|new> <spec|deck|theme> [out]"); process.exitCode = 1; }
 }

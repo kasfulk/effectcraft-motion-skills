@@ -47,6 +47,20 @@ function wrapWords(str, font, size, maxW) {
   if (line || !lines.length) lines.push(line);
   return lines;
 }
+function emphasisIndex(str, word) {
+  return word ? String(str).toLowerCase().indexOf(String(word).toLowerCase()) : -1;
+}
+function wordBox(res, word) {
+  var idx = -1, prefix = '', line = '', low = String(word).toLowerCase();
+  for (var i = 0; i < res.lines.length; i++) {
+    var at = res.lines[i].toLowerCase().indexOf(low);
+    if (at >= 0) { idx = i; prefix = res.lines[i].slice(0, at); line = res.lines[i].slice(at, at + word.length); break; }
+  }
+  if (idx < 0) return null;
+  var lineH = res.h / res.lines.length, lineW = measure(res.lines[idx], res.font, res.size);
+  var x = res.x + (res.align === 'center' ? -lineW / 2 : 0) + measure(prefix, res.font, res.size);
+  return {x:x, y:res.y + idx * lineH, w:measure(line, res.font, res.size), h:lineH};
+}
 function text(comp, str, o) {
   o = o || {}; var font = o.font || THEME.fonts.body, size = o.size || 64, min = o.min || 36, color = o.color || THEME.colors.ink;
   var maxW = o.maxW || (SAFE.x1 - SAFE.x0), maxH = o.maxH || (SAFE.y1 - SAFE.y0), lines, h, w;

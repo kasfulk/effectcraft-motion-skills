@@ -1,0 +1,41 @@
+{
+  "plain": {
+    "look": "plain",
+    "size": "3:4",
+    "bg": "#f2efe8",
+    "ink": "#111111",
+    "accent": "#e63323",
+    "font_head": "HelveticaNeue-CondensedBlack",
+    "font_body": "HelveticaNeue-Medium",
+    "handle": "@yourpage",
+    "progress": false,
+    "drawing": "",
+    "style": "reel"
+  },
+  "themed": {
+    "look": "themed",
+    "size": "3:4",
+    "bg": "#f4f1ea",
+    "ink": "#1d1914",
+    "accent": "#7a1f2b",
+    "font_head": "Didot-Bold",
+    "font_body": "Baskerville",
+    "handle": "@yourpage",
+    "progress": true,
+    "drawing": "",
+    "style": "editorial-spread"
+  },
+  "graphic": {
+    "look": "graphic",
+    "size": "4:5",
+    "bg": "#10151c",
+    "ink": "#f4f1ea",
+    "accent": "#e8b04a",
+    "font_head": "Montserrat-ExtraBold",
+    "font_body": "Inter-Medium",
+    "handle": "@yourpage",
+    "progress": false,
+    "drawing": "cover",
+    "style": "infopop"
+  }
+}

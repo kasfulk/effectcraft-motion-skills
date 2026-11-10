@@ -105,6 +105,19 @@ run_failure 'var r=rect(comp,{x:CX,y:850,w:400,h:400,fill:theme.colors.accent});
 
 if pgrep -x effectcraft-cli; then exit 1; fi
 
+printf '%s\n' '{"template":"themed","slides":[{"text":"Tiga hal yang membuat carousel ini dibaca sampai habis.","lead":"Sebelum mulai","emphasis":"sampai habis","source":"Catatan lapangan"},{"text":"Simpan ini untuk nanti."}]}' > "$TMP/deck.json"
+node "$ROOT/bin/ecm.mjs" slides "$TMP/deck.json" --out "$TMP/deck-out" >"$TMP/deck.out" 2>"$TMP/deck.err"
+test -f "$TMP/deck-out/01.png"
+test -f "$TMP/deck-out/02.png"
+test "$(magick identify -format '%wx%h' "$TMP/deck-out/01.png")" = '1080x1440'
+set +e
+printf '%s\n' '{"template":"themed","slides":[{"text":"Halo dunia","emphasis":"hilang"}]}' > "$TMP/deck-bad-emphasis.json"
+node "$ROOT/bin/ecm.mjs" slides "$TMP/deck-bad-emphasis.json" --out "$TMP/deck-bad" >"$TMP/deck-bad.out" 2>"$TMP/deck-bad.err"
+status=$?
+set -e
+test "$status" -eq 1
+grep -F 'slide 1: emphasis not found in text' "$TMP/deck-bad.err"
+
 LOCK=/tmp/ecm-render.lock
 own_lock=0
 trap 'if [ "$own_lock" -eq 1 ]; then rm -rf "$LOCK"; fi; rm -rf "$TMP"' EXIT

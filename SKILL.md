@@ -45,7 +45,11 @@ Optional per scene: `title` (kinetic/bars/steps), `bg` (`base`/`ink`/`accent`), 
 
 ## Themes
 
-reel: bold news/finance · pitch: calm, technical · infopop: playful explainer · kinetik: dark, high-energy · tenang: soft, reflective · edukasi: lesson/worksheet. See [reference/themes.md](reference/themes.md).
+70 themes (6 originals + 64 ported). reel: bold news/finance · pitch: calm, technical · infopop: playful explainer · kinetik: dark, high-energy · tenang: soft, reflective · edukasi: lesson/worksheet. See [reference/themes.md](reference/themes.md).
+
+## Templates
+
+Three deck templates (`plain`, `themed`, `graphic`); `slides` in a spec renders one PNG per slide. See [reference/templates.md](reference/templates.md).
 
 ## Rules
 
