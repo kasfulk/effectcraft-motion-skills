@@ -213,6 +213,8 @@ export function validateDeck(deck, templates) {
   const theme = deck.theme ?? tpl?.style;
   if (!Object.hasOwn(themes, theme)) errors.push(`theme: unknown ${JSON.stringify(theme)} (see themes.json)`);
   if (deck.out !== undefined && !(typeof deck.out === "string" && deck.out.trim() !== "")) errors.push("out: must be a non-empty directory name");
+  for (const k of ["handle"]) if (deck[k] !== undefined && !str(deck[k])) errors.push(`${k}: must be a non-empty string`);
+  for (const k of Object.keys(deck)) if (!["template", "theme", "out", "slides", "handle"].includes(k)) errors.push(`${k}: unknown deck field (template, theme, out, slides, handle)`);
   if (!Array.isArray(deck.slides) || deck.slides.length === 0) {
     errors.push("slides: must be a non-empty array (1–30)");
     return errors;
@@ -389,7 +391,8 @@ function slides(file, outArg) {
   const templates = loadTemplates();
   const errors = validateDeck(deck, templates);
   if (errors.length) { for (const m of errors) console.error(m); return 1; }
-  const tpl = templates[deck.template];
+  const tpl = { ...templates[deck.template] };
+  if (deck.handle !== undefined) tpl.handle = deck.handle;
   const themeId = deck.theme ?? tpl.style;
   const theme = resolveTheme(loadThemes()[themeId], { template: deck.template }, templates);
   const size = SLIDE_SIZES[tpl.size] || [1080, 1440];

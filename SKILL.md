@@ -5,22 +5,34 @@ description: Use when making vertical 9:16 motion graphics or infographics (numb
 
 # effectcraft-motion
 
-A JSON spec becomes a 1080×1920 30 fps MP4 with eased motion, theme fonts, safe-area checks, and text-derived timing. **Never hand-write effectcraft-cli JSX for these scene types**. Hand-written builds get linear keys, default fonts, and misplaced labels.
+A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli JSX for these scene types** — hand-written builds get linear keys, default fonts, misplaced labels. Always write a spec.
 
-## Workflow
+## Hard rules
+
+1. **One engine process at a time.** Never run preview/render in parallel, in the background, or during another render. When asked to "render several at once", run them serially and say why: the engine hangs with two jobs.
+2. **Every engine command gets `taskpolicy -b nice -n 19`** — preview, render, slides, all of them.
+3. **Only numbers the user gave or a cited source contains.** No invented stats. No numbers? Either ask, or use hook/kinetic/steps/compare and tell the user the video has no data. An explicitly labelled illustration ("ilustrasi, bukan data aktual") with stated assumptions is allowed.
+4. **Render only after you have viewed a fresh sheet.** `check` passing means the shape is legal, not that the content is right.
+5. **`duration` is an override, not a default.** Omit it; timing comes from the text. Set it only when the user asks for a specific hold.
+
+## Procedure (in order)
 
 ```bash
 E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
-node $E check   video.json                          # validate; estimated seconds
-taskpolicy -b nice -n 19 node $E preview video.json # builds project + video.sheet.png
-# Read the sheet. Fix the spec, re-preview.
-taskpolicy -b nice -n 19 node $E render  video.json # ~1 min; last line = MP4 path
+node $E check video.json --strict      # 1 validate + craft lint (C01–C10)
+taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
 ```
+
+3. **Read the sheet with the Read tool.** Every panel. One settled frame per scene.
+4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
+5. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
+6. `taskpolicy -b nice -n 19 node $E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
+7. Report the MP4 path and total duration. If the video has no data because none was given, say so.
 
 ## Spec
 
 ```json
-{"theme":"reel","out":"hemat.mp4","scenes":[
+{"theme":"reel","out":"hemat.mp4","transition":"fade","scenes":[
   {"type":"hook","text":"Gaji naik, tabungan tetap?","emphasis":"tetap"},
   {"type":"stat","value":72,"suffix":"%","label":"pekerja belum punya dana darurat"},
   {"type":"bars","title":"Tabungan per bulan","items":[{"label":"Jan","value":40},{"label":"Feb","value":72}],"highlight":1},
@@ -31,7 +43,7 @@ taskpolicy -b nice -n 19 node $E render  video.json # ~1 min; last line = MP4 pa
 | type | needs | use for |
 |---|---|---|
 | hook / quote / outro | `text` (+`emphasis`, `source`, `cta`) | opener, citation, closer |
-| kinetic | `lines` 1–6 | phrases revealed one by one |
+| kinetic | `lines` 1–6 | phrases revealed one by one — not data |
 | stat | `value` (+`prefix`,`suffix`,`label`) | one big counting number |
 | bars | `items` 2–6 `{label,value}` (+`highlight`) | comparison over categories/time |
 | donut | `value` 0–100 | a share/percentage |
@@ -39,34 +51,49 @@ taskpolicy -b nice -n 19 node $E render  video.json # ~1 min; last line = MP4 pa
 | compare | `left`,`right` `{title,points≤4}` | before/after, A vs B |
 | custom | `jsx` | anything else, via core helpers |
 
-Optional per scene: `title` (kinetic/bars/steps), `bg` (`base`/`ink`/`accent`), `duration` (1–15 s; omit to time from text). Fields: [reference/scenes.md](reference/scenes.md).
+Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emphasis`, `transition` (`cut` default, `fade`, `wipe`, `slide`, `dip`). Spec level: `transition` default, `audio` `{bed, bedGain, sfx:[{at|scene, name, gain}]}` — sound is sparse, one sfx per 3–5 s. Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md).
 
-**Effects:** `fx` at spec or scene level, e.g. `"fx":["grid","rgbIn"]`. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. Two or three per scene; `liquid`/`paper` add render time. See [reference/fx.md](reference/fx.md).
+**Effects:** `"fx":["grid","rgbIn"]` at spec or scene level, ≤ 1 each. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. See [reference/fx.md](reference/fx.md).
 
-## Themes
+## Choosing scenes
 
-70 themes (6 originals + 64 ported). reel: bold news/finance · pitch: calm, technical · infopop: playful explainer · kinetik: dark, high-energy · tenang: soft, reflective · edukasi: lesson/worksheet. See [reference/themes.md](reference/themes.md).
+A data/infographic video must contain at least one chart scene (stat/bars/donut) — a kinetic text list is not an infographic. Bars `highlight` = the number the story is about. Bars items must be comparable categories (never "Gagal" vs "Total"). One stat per fact; never two scenes showing the same number. `donut` is 0–100 — a share, nothing else.
 
-## Templates
+Pick story shape and hook formula from [reference/craft.md](reference/craft.md) before writing the spec. 70 themes in [reference/themes.md](reference/themes.md) (`node $E themes` to list): reel bold news/finance · pitch calm technical · infopop playful explainer · kinetik dark high-energy · tenang soft reflective · edukasi lesson/worksheet. Carousels: deck specs with `handle` override, [reference/templates.md](reference/templates.md).
 
-Three deck templates (`plain`, `themed`, `graphic`); `slides` in a spec renders one PNG per slide. See [reference/templates.md](reference/templates.md).
+After preview, score your own sheet against [reference/review.md](reference/review.md) (bar: 8/10).
 
-## Rules
+## Fix table (error → what to edit)
 
-- **Read the whole sheet before every render** (one settled frame per scene).
-- **One engine process at a time.** Never run preview/render in parallel or in the background. `render` holds `/tmp/ecm-render.lock`; `preview` doesn't, so never preview during a render.
-- **Fix errors in the spec.** Errors name the scene: `scene 3 (bars): text too long`.
-- **Use only numbers from the user or a cited source.** Never invent data. If you have no numbers, ask for them. If you can't ask, use hook/kinetic/steps/compare and say the video has no data.
-- **Raw effectcraft-cli** only for edits outside these scenes: [reference/cli.md](reference/cli.md) (verified pitfalls).
+| Error / sheet symptom | Fix (in the spec) |
+|---|---|
+| `text too long` / safe-area overflow | Shorten that text — labels ≤ 2 words, titles ≤ 5. **Never** swap a data scene to kinetic to dodge it |
+| `duration too short, needs ≥ Ns` | Raise `duration`, or let auto timing work (omit it) |
+| Bars labels overflow | Shorten labels first, then title; `highlight` on the story bar |
+| `donut` value > 100 | Wrong scene or wrong meaning — a donut is a share of 100 |
+| Two panels look identical | Delete one; one fact per stat |
+| Slide shows `@yourpage` | Deck spec: set `"handle": "@..."` |
+
+## Red flags — these thoughts are wrong
+
+| You are about to… | Reality |
+|---|---|
+| "Render both in parallel to save time" | Engine hangs; run serially, tell the user |
+| "Check passed, content must be right" | Check validates shape; you verify numbers against the request |
+| "Set duration 3 so pacing is even" | Omit `duration`; text-derived timing is the pacing |
+| "CTA doesn't fit, drop it" | Shorten the cta to ≤ 5 words instead |
+| "Bars won't fit, I'll list values as kinetic lines" | Shorten labels; the chart is the video's point |
+| "Sheet looked fine last preview" | Any spec edit → re-preview → re-read before render |
+| "Hand-write JSX for this one scene" | Use `custom` + helpers, or extend `lib/fx.jsx` |
 
 ## Common mistakes
 
 | Mistake | Instead |
 |---|---|
-| Probing the API by trial, writing JSX | Write a spec. New visual: `custom` + helpers (scenes.md) |
-| Checking 2–3 frames | Read every frame on the sheet |
+| Probing the API by trial, writing JSX | Write a spec; new visual: `custom` + helpers (scenes.md) |
+| Checking 2–3 frames | Read every panel on the sheet |
 | Every scene fixed at 3 s | Omit `duration` |
 | Default font, generic dark bg | Pick a theme |
 | Hand-adding AE effects in `custom` JSX | Use an `fx` preset; new effect: add it to `lib/fx.jsx` |
-| `sed -i` on macOS | Use the Edit tool on the spec |
-| Sheet shows sparse/lopsided scene | Fix the spec, re-preview (cheap) before the one render |
+| `sed -i` on macOS | Edit tool on the spec |
+| Raw CLI inside scenes | Raw `effectcraft-cli` only for edits outside these scenes ([reference/cli.md](reference/cli.md)) |

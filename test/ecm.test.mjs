@@ -434,3 +434,13 @@ test("audio: real ffmpeg mux on a generated black video", { skip: !existsSync("/
     assert.ok(!existsSync(mp4.replace(/\.mp4$/, ".tmp.mp4")), "tmp file cleaned up");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ---- deck handle override ----
+test("deck: handle override accepted, unknown fields rejected", () => {
+  const templates = loadTemplates();
+  assert.deepEqual(validateDeck({ template: "themed", handle: "@hidupteratur", slides: [{ text: "A" }] }, templates), []);
+  assert.deepEqual(validateDeck({ template: "themed", handle: "", slides: [{ text: "A" }] }, templates), ["handle: must be a non-empty string"]);
+  assert.ok(validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).some((m) => m.startsWith("bg: unknown deck field")), validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).join("; "));
+  // existing decks without handle still validate
+  assert.deepEqual(validateDeck({ template: "plain", slides: [{ text: "A" }] }, templates), []);
+});
