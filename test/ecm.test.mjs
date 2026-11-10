@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadThemes, loadTemplates, validate, validateDeck, durationOf, buildScript, buildSlidesScript, resolveTheme, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
+import { loadThemes, loadTemplates, validate, validateDeck, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
 test("themes: ids and structure", () => {
@@ -241,4 +241,110 @@ test("buildSlidesScript injects SPEC, TPL, THEME, SIZE and SLIDES.draw", () => {
   assert.ok(src.includes("var SIZE ="), "SIZE injected");
   assert.ok(src.includes("SLIDES.draw"), "SLIDES.draw called");
   assert.ok(src.includes("addComp('Main'"), "Main comp built");
+});
+
+// ---- craft lint ----
+const L = (scenes, theme = T.reel, extra = {}) => {
+  const spec = { theme: "reel", scenes, ...extra };
+  return lint(spec, theme, spec.scenes.map((s) => durationOf(s, theme)))
+    .map((f) => `${f.code} ${f.scene}: ${f.message} → ${f.fix}`);
+};
+const codes = (scenes, theme, extra) => [...new Set(L(scenes, theme, extra).map((l) => l.slice(0, 3)))];
+
+test("C01: cold open and missing outro", () => {
+  assert.ok(L([{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}]},{type:"kinetic",lines:["x"]}]).some((l) => l.startsWith("C01 ") && l.includes("cold open")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"kinetic",lines:["x"]}]).some((l) => l.startsWith("C01 ") && l.includes("no outro/cta")));
+  const ok = L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]);
+  assert.ok(!ok.some((l) => l.startsWith("C01 ")), ok.join("; "));
+});
+test("C02: scene count and total duration", () => {
+  assert.ok(codes([{type:"hook",text:"Hai",emphasis:"hai"}]).includes("C02"));
+  assert.ok(L(Array.from({length:9}, (_,i) => ({type:"hook",text:"Hai"+i,emphasis:"hai"}))).some((l) => l.startsWith("C02 ") && l.includes("9 scenes")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:1,label:"x",suffix:"%"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C02 ") && l.includes("under 12")));
+  assert.ok(L(Array.from({length:8}, (_,i) => ({type:"quote",text:"kata ".repeat(20), emphasis:"kata", duration: 8, bg: i%2?"ink":"base"}))).some((l) => l.startsWith("C02 ") && l.includes("over 60")));
+  assert.equal(codes([{type:"hook",text:"Gaji naik, tabungan tetap?",emphasis:"tetap"},{type:"stat",value:72,suffix:"%",label:"pekerja belum punya dana darurat"},{type:"bars",title:"Tabungan",items:[{label:"Jan",value:40},{label:"Feb",value:72}],highlight:1},{type:"steps",title:"Mulai dari sini",items:["Catat pengeluaran","Sisihkan 10%","Otomatiskan"]},{type:"outro",text:"Simpan video ini.",cta:"Follow untuk tips lain",emphasis:"simpan",bg:"accent"}]).includes("C02"), false);
+});
+test("C03: bars highlight", () => {
+  const items = [{label:"Makanan",value:40},{label:"Transport",value:120}];
+  assert.deepEqual(L([{type:"bars",items}]).filter((l) => l.startsWith("C03 ")), ['C03 scenes[0] (bars): no highlight → add "highlight": 1 (largest value is Transport)']);
+  assert.equal(L([{type:"bars",items,highlight:1}]).filter((l) => l.startsWith("C03")).length, 0);
+  assert.ok(L([{type:"bars",items,highlight:0}]).some((l) => l.startsWith("C03 ") && l.includes("points at the smallest value")));
+});
+test("C04: word counts", () => {
+  assert.ok(L([{type:"hook",text:"satu dua tiga empat lima enam tujuh delapan sembilan sepuluh",emphasis:"satu"}]).some((l) => l.startsWith("C04 ") && l.includes("hook is 10 words")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"kinetic",lines:["satu dua tiga empat lima"]}]).some((l) => l.startsWith("C04 ") && l.includes("line 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"steps",items:["satu dua tiga empat lima enam tujuh delapan"]}]).some((l) => l.startsWith("C04 ") && l.includes("step 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"quote",text:"kata ".repeat(25),emphasis:"kata"}]).some((l) => l.startsWith("C04 ") && l.includes("quote is 25 words")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"compare",left:{title:"a",points:["satu dua tiga empat lima enam tujuh"]},right:{title:"b",points:["x"]}}]).some((l) => l.startsWith("C04 ") && l.includes("left point 1")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu"},{type:"outro",text:"Simpan.",cta:"satu dua tiga empat lima enam",emphasis:"simpan"}]).some((l) => l.startsWith("C04 ") && l.includes("cta is 6 words")));
+  const ok = L([{type:"hook",text:"Gaji naik?",emphasis:"naik"},{type:"outro",text:"Simpan.",cta:"Follow kami",emphasis:"simpan"}]);
+  assert.ok(!ok.some((l) => l.startsWith("C04 ")), ok.join("; "));
+});
+test("C05: emphasis", () => {
+  assert.ok(L([{type:"hook",text:"Hai"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C05 ") && l.includes("no emphasis word")));
+  assert.ok(L([{type:"hook",text:"satu dua tiga",emphasis:"satu dua tiga empat"}]).some((l) => l.startsWith("C05 ") && l.includes("is 4 words")));
+});
+test("C06: rhythm", () => {
+  assert.ok(L([{type:"stat",value:1,label:"x"},{type:"stat",value:2,label:"x"},{type:"stat",value:3,label:"x"}]).some((l) => l.startsWith("C06 ") && l.includes("three consecutive stat")));
+  assert.equal(L([{type:"kinetic",lines:["a"]},{type:"kinetic",lines:["b"]},{type:"kinetic",lines:["c"]}]).filter((l) => l.startsWith("C06 ") && l.includes("consecutive")).length, 0);
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:1,label:"x"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:1},{type:"stat",value:2,label:"x"},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C06 ") && l.includes("flat rhythm")));
+});
+test("C07: fx", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"}], T.reel, {fx:["grain","glow"]}).some((l) => l.startsWith("C07 spec:") && l.includes("2 spec-level fx presets")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glow","sweep"]}]).some((l) => l.startsWith("C07 scenes[0]") && l.includes("2 fx presets")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glitch"]}], T.tenang).some((l) => l.startsWith("C07 ") && l.includes("fights the calm theme")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai",fx:["glitch"]}], T.reel).filter((l) => l.startsWith("C07")).length, 0);
+});
+test("C08: numbers", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:150}]).some((l) => l.startsWith("C08 ") && l.includes("without label")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:150,label:"x"}]).some((l) => l.startsWith("C08 ") && l.includes("reads like a percentage")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"bars",items:[{label:"a",value:500},{label:"b",value:200}],highlight:0}]).some((l) => l.startsWith("C08 ") && l.includes("over 100")));
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"donut",value:12.5}]).some((l) => l.startsWith("C08 ") && l.includes("has decimals")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai"},{type:"stat",value:72,suffix:"%",label:"x"},{type:"donut",value:72}]).filter((l) => l.startsWith("C08")).length, 0);
+});
+test("C09: long hold", () => {
+  assert.ok(L([{type:"hook",text:"Hai",emphasis:"hai",duration:6}]).some((l) => l.startsWith("C09 ") && l.includes("long hold")));
+  assert.equal(L([{type:"hook",text:"Hai",emphasis:"hai",duration:4}]).filter((l) => l.startsWith("C09")).length, 0);
+  assert.equal(L([{type:"stat",value:1,label:"x",duration:15}]).filter((l) => l.startsWith("C09")).length, 0, "non-text scenes exempt");
+});
+test("C10: data-only", () => {
+  assert.ok(L([{type:"stat",value:1,label:"x",suffix:"%"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:0},{type:"donut",value:50},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).some((l) => l.startsWith("C10 ") && l.includes("numbers without a line of meaning")));
+  assert.equal(L([{type:"stat",value:1,label:"x",suffix:"%"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:0},{type:"kinetic",lines:["arti angka ini"]},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).filter((l) => l.startsWith("C10")).length, 0);
+});
+test("lint: examples produce zero errors, lint-bad triggers many codes", () => {
+  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  for (const name of ["hemat.json", "all-scenes.json"]) {
+    const file = new URL(`../examples/${name}`, import.meta.url).pathname;
+    const r = spawnSync(process.execPath, [bin, "check", file], {encoding: "utf8"});
+    assert.equal(r.status, 0, r.stderr);
+    for (const line of r.stdout.split("\n")) assert.ok(!line.startsWith("ERROR"), line);
+  }
+  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const r = spawnSync(process.execPath, [bin, "check", bad], {encoding: "utf8"});
+  assert.equal(r.status, 0, r.stderr);
+  const found = [...new Set(r.stdout.split("\n").filter((l) => l.startsWith("WARN")).map((l) => l.slice(6, 9)))];
+  assert.ok(found.length >= 6, `expected >= 6 codes, got ${found.join(",")}`);
+  for (const c of ["C01","C03","C04","C05","C06","C07","C08"]) assert.ok(found.includes(c), `${c} missing from ${found.join(",")}`);
+});
+test("check: --strict exits 2 on warnings, 0 when clean", () => {
+  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const r = spawnSync(process.execPath, [bin, "check", bad, "--strict"], {encoding: "utf8"});
+  assert.equal(r.status, 2);
+  assert.ok(r.stdout.includes("WARN  "), r.stdout);
+  const cleanSpec = { theme: "reel", scenes: [
+    {type:"hook", text:"Gaji naik, tabungan tetap?", emphasis:"tetap"},
+    {type:"stat", value:72, suffix:"%", label:"pekerja belum punya dana darurat", bg:"ink"},
+    {type:"bars", title:"Tabungan per bulan", items:[{label:"Jan",value:40},{label:"Feb",value:72}], highlight:1},
+    {type:"steps", title:"Mulai dari sini", items:["Catat pengeluaran","Sisihkan 10%","Otomatiskan"]},
+    {type:"outro", text:"Simpan video ini.", cta:"Follow untuk tips lain", emphasis:"simpan", bg:"accent"},
+  ]};
+  const dir = mkdtempSync(join(tmpdir(), "ecm-"));
+  try {
+    const clean = join(dir, "clean.json");
+    writeFileSync(clean, JSON.stringify(cleanSpec));
+    const r0 = spawnSync(process.execPath, [bin, "check", clean, "--strict"], {encoding: "utf8"});
+    assert.equal(r0.status, 0, r0.stdout);
+    assert.ok(!r0.stdout.includes("WARN"), r0.stdout);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
 });

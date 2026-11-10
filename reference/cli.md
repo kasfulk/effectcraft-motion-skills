@@ -36,6 +36,54 @@ Validates the JSON without starting EffectCraft. It prints estimated seconds per
 - `scene 1 (hook): emphasis "turun" not found in text`
 - `scene 1 (kinetic): emphasis "x" not found in any line`
 
+After the duration table, `check` prints craft lint lines, one per finding:
+
+```text
+WARN  C03 scenes[2] (bars): no highlight → add "highlight": 0 (largest value is Makanan)
+```
+
+Each line is `LEVEL  CODE scene: message → fix`. All findings are `WARN` (no `ERROR` levels exist yet). Warnings alone exit 0; with `--strict` any warning exits 2:
+
+```sh
+node bin/ecm.mjs check spec.json --strict
+```
+
+### Craft lint
+
+Rules C01–C10 as printed by `check` (see `examples/lint-bad.json`):
+
+| code | rule | message | fix |
+|---|---|---|---|
+| C01 | first scene not hook/quote/stat (cold open) | `cold open (first scene is <type>)` | make `scenes[0]` `{"type":"hook","text":"..."}` or open with a quote/stat |
+| C01 | last scene not outro | `no outro/cta, viewers get no next step` | make the last scene `{"type":"outro","text":"...","cta":"..."}` |
+| C02 | fewer than 3 scenes | `<n> scenes` | merge or add scenes so there are 3–8 |
+| C02 | more than 8 scenes | `<n> scenes` | cut to 8 scenes or fewer |
+| C02 | estimated total under 12 s or over 60 s | `estimated total <n> s` | total under 12 s (is `<n>`); add a scene or lengthen text / total over 60 s (is `<n>`); cut scenes or shorten text |
+| C03 | bars without `highlight` | `no highlight` | add `"highlight": <i>` (largest value is `<label>`) |
+| C03 | highlight is not the largest value | `note: highlight <i> (<label>) is not the largest value` | set `"highlight": <i>` (largest value is `<label>`) |
+| C03 | highlight points at the smallest value | `highlight <i> points at the smallest value (<label>)` | set `"highlight": <i>` (largest value is `<label>`) |
+| C04 | hook over 9 words | `hook is <n> words` | rewrite `"text"` to 9 words or fewer |
+| C04 | kinetic line over 4 words | `line <j> "<line>" is <n> words` | split or trim `lines[<j>]` to 4 words or fewer |
+| C04 | steps item over 7 words | `step <j> "<item>" is <n> words` | split or trim `items[<j>]` to 7 words or fewer |
+| C04 | quote over 24 words | `quote is <n> words` | trim `"text"` to 24 words or fewer |
+| C04 | compare point over 6 words | `<left\|right> point <j> "<p>" is <n> words` | trim `<side>.points[<j>]` to 6 words or fewer |
+| C04 | outro.cta over 5 words | `cta is <n> words` | trim `"cta"` to 5 words or fewer |
+| C05 | hook/outro/quote without `emphasis` | `no emphasis word; pick the one word the scene is about` | add `"emphasis": "<one word from text>"` |
+| C05 | emphasis over 3 words | `emphasis "<e>" is <n> words` | trim `"emphasis"` to 3 words or fewer |
+| C06 | three consecutive scenes of the same type (not kinetic) | `three consecutive <type> scenes` | vary the scene types (e.g. insert a kinetic or steps scene) |
+| C06 | three consecutive same `bg` when more than 4 scenes | `flat rhythm; three scenes on bg <bg>` | alternate bg base/ink/accent on the turn (set `"bg"` on `scenes[<j>]`) |
+| C07 | more than 1 spec-level fx preset | `<n> spec-level fx presets` | keep at most 1 fx preset in spec `"fx"` (has `<list>`) |
+| C07 | more than 1 fx preset on one scene | `<n> fx presets on one scene` | keep at most 1 fx preset in `"fx"` (has `<list>`) |
+| C07 | glitch/rgbIn on a calm or smooth theme | `fx <f> fights the <easing> theme` | remove glitch/rgbIn or pick a snap/pop theme |
+| C08 | stat without `label` | `stat without label` | add `"label": "<what the number is>"` |
+| C08 | stat value over 100 with no prefix/suffix | `value <v> reads like a percentage over 100` | add `"suffix": "%"` or `"prefix": "Rp "` so the unit is clear |
+| C08 | bars value over 100 | `bar value(s) over 100 (<labels>)` | rescale values (e.g. thousands) or make the unit part of each label |
+| C08 | donut value with decimals | `donut value <v> has decimals` | round `"value"` to a whole number |
+| C09 | explicit duration on a text scene over 2× the auto estimate | `explicit duration <d>s is more than 2x the <a>s estimate; long hold, viewers scroll` | remove `"duration"` or set it near `<a>` |
+| C10 | ≥ 3 data scenes (stat/bars/donut) and no kinetic/steps/quote | `<n> data scenes: numbers without a line of meaning` | add a kinetic, steps, or quote scene that says what the numbers mean |
+
+`scene` is `scenes[<i>] (<type>)` for scene findings, or `spec` for spec-level findings. Words are whitespace-split.
+
 ### `preview`
 
 ```sh

@@ -1,0 +1,13 @@
+{
+  "theme": "tenang",
+  "fx": ["glitch", "glow"],
+  "scenes": [
+    {"type": "bars", "title": "Pengeluaran", "items": [{"label": "Makanan", "value": 450}, {"label": "Transport", "value": 120}, {"label": "Hiburan", "value": 380}]},
+    {"type": "stat", "value": 1450000, "fx": ["glitch", "vignette"]},
+    {"type": "donut", "value": 12.5},
+    {"type": "stat", "value": 88, "label": "target tercapai"},
+    {"type": "hook", "text": "Cara paling sederhana untuk mulai mengatur uang bulanan tanpa ribet", "duration": 9},
+    {"type": "steps", "title": "Langkah", "items": ["Catat setiap pengeluaran harian kamu dengan teliti", "Sisihkan minimal sepuluh persen dari gaji bulanan"]},
+    {"type": "outro", "text": "Simpan video ini untuk nanti ya teman teman semua", "cta": "Follow untuk tips keuangan lainnya setiap hari"}
+  ]
+}
