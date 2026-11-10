@@ -10,7 +10,10 @@ export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps",
 const FPS = 30;
 const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
-const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx"]);
+const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx"]);
+export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
+const fxOk = (f) => f === undefined || (Array.isArray(f) && f.every((n) => FX_NAMES.includes(n)));
+const FX_ERR = `fx must be an array of: ${FX_NAMES.join(", ")}`;
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 export const loadThemes = () => JSON.parse(read("../themes.json"));
@@ -58,6 +61,7 @@ function sceneErrors(s) {
   }
   if (s.duration !== undefined && !(Number.isFinite(s.duration) && s.duration >= 1 && s.duration <= 15)) e.push("duration must be 1–15");
   if (s.bg !== undefined && !["base", "ink", "accent"].includes(s.bg)) e.push("bg must be base|ink|accent");
+  if (!fxOk(s.fx)) e.push(FX_ERR);
   for (const k of ["title", "label", "prefix", "suffix", "source", "cta"]) {
     if (s[k] !== undefined && typeof s[k] !== "string") e.push(`${k} must be a string`);
   }
@@ -75,6 +79,7 @@ export function validate(spec, themes) {
   if (!spec || typeof spec !== "object") return ["spec: must be an object"];
   const errors = [];
   if (!Object.hasOwn(themes, spec.theme)) errors.push(`theme: unknown ${JSON.stringify(spec.theme)} (${Object.keys(themes).join(", ")})`);
+  if (!fxOk(spec.fx)) errors.push(FX_ERR);
   if (spec.out !== undefined && !(typeof spec.out === "string" && spec.out.trim() !== "" && spec.out.endsWith(".mp4"))) errors.push("out: must be a .mp4 path");
   if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) {
     errors.push("scenes: must be a non-empty array");
@@ -134,6 +139,7 @@ const MAIN = String.raw`
       var hasContent = false;
       for (var li = 1; li <= c.numLayers; li++) if (c.layer(li).comment !== 'bg') { hasContent = true; break; }
       if (!hasContent) throw new Error('renders blank');
+      entered = Math.max(entered, applyFx(c, THEME, (SPEC.fx || []).concat(scene.fx || []), entered));
       checkSafe(c, entered);
     } catch (e) {
       var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
@@ -159,6 +165,7 @@ export function buildScript(spec, theme, durs) {
     `var DURS = ${json(durs)};`,
     read("../lib/core.jsx"),
     read("../lib/scenes.jsx"),
+    read("../lib/fx.jsx"),
     MAIN,
   ].join("\n");
 }

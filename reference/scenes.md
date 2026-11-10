@@ -16,6 +16,7 @@
 | `title` | no | string | String when present | Used by scene layouts that support a title. |
 | `bg` | no | string | `base`, `ink` or `accent` | Default is the theme base color. |
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
+| `fx` | no | string array | Preset names from [fx.md](fx.md) | Also allowed at spec level; both lists apply. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
 
 ## `hook`
