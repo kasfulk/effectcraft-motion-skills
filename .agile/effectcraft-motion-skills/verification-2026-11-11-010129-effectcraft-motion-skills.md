@@ -685,3 +685,22 @@ Two defects found and fixed while building it:
 | Tests | `node --test test/ecm.test.mjs` | 46/46 |
 | Layouts | `node scripts/smoke-layouts.mjs` | 50/50 |
 | Examples | `check` × 3 | exit 0 each |
+
+## Verification 8 — every transition under the camera null (2026-11-11 12:05)
+
+Moving the camera onto a parent null changes what the transitions now own: previously fold,
+pageTurn, zoom, colorShift and maskWipe fought the camera for the scene layer's scale, and
+slide and glitch fought it for position. With the camera on the parent those properties are
+the transitions' alone, so each had to be re-checked for compositing rather than just for
+"the build did not throw".
+
+`examples/motion-gallery.json` uses every transition, so it is the fixture: one frame at each
+mid-transition point (`cut@2.67 zoom@5.44 maskWipe@7.94 fold@11.32 pageTurn@13.77
+glitch@16.47 dipSeed@19.49 colorShift@22.87 zoom@25.37 maskWipe@29.54 fold@31.99
+pageTurn@35.37 glitch@40.37 dipSeed@43.75 colorShift@46.77`).
+
+| Criterion | Observed |
+|---|---|
+| All 11 transition types composite | 15/15 frames show scene content, no blank or black frame |
+| Smoke already builds each transition | `node scripts/smoke-layouts.mjs` → 50/50 |
+| Encoded video unaffected | boundary scan on the new `all-scenes.mp4` → no near-black at 9 cuts |
