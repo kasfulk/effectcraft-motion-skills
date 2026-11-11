@@ -441,7 +441,7 @@ const MAIN = String.raw`
     cam.parent = camRoot;
     cam.startTime = st - ov; cam.outPoint = st + finalDurs[j];
     cam.transform.anchorPoint.setValue([540, 960]);
-    var CAM = CAMS[j % 3];
+    var CAM = CAMS[j % CAMS.length];
     animate(cam.transform.scale, cam.startTime, cam.outPoint, CAM.s0, CAM.s1, 'calm');
     // Drift: a slow breath on camRoot's scale, which nothing else uses, so it multiplies the
     // push instead of fighting it. 1.5 % over a 2.4 s period - enough to feel alive, not enough

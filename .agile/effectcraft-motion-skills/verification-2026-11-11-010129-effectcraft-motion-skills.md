@@ -1032,3 +1032,27 @@ No background column at any point - the seam stays covered.
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 22 - the fourth camera move was unreachable (2026-11-11 17:25)
+
+`CAMS` holds four moves but the loop indexed `CAMS[j % 3]`, so the fourth never ran and every
+reel cycled only three. Fixed to `CAMS[j % CAMS.length]`.
+
+Proof on `examples/hemat.ecproj` - five scenes, five camera nulls:
+
+```
+cam1 scale: [104.0, 112.0]   move 0  push in
+cam2 scale: [112.0, 104.0]   move 1  pull out
+cam3 scale: [106.0, 112.0]   move 2  push in, crane up
+cam4 scale: [112.0, 106.0]   move 3  pull out  <- previously unreachable
+cam5 scale: [104.0, 112.0]   wraps to move 0
+```
+
+`reference/scenes.md` documented `j % 3` with three moves and stale amplitudes (100/106/110)
+that no longer matched the code. Rewritten to the real four moves, the measured 104-112 % range,
+and the two-null camera stack with shake and drift.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |

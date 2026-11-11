@@ -305,13 +305,26 @@ Scene start times and the total video length are unchanged: a transition overlap
 
 Every scene layer in `Main` gets a slow camera move across its whole span, so no frame is locked. The move cycles by scene index so two shots in a row never move the same way:
 
-| `j % 3` | Move |
+| `j % 4` | Move |
 |---|---|
-| 0 | push in, `100% → 106%` |
-| 1 | crane out, `106% → 100%` |
-| 2 | stronger push with a drift, `106% → 110%` plus `+20 px` right and `−16 px` up |
+| 0 | push in `104% → 112%`, drift right to `(576, 936)` |
+| 1 | pull out `112% → 104%`, drift left to `(504, 984)` |
+| 2 | push in `106% → 112%`, crane up to `(540, 912)` |
+| 3 | pull out `112% → 106%`, drift right to `(566, 960)` |
 
-6% is the floor: below that the move is invisible on a phone. The move scales the precomp, so content must stay inside `SAFE` — at 110% the frame crops 54 px horizontally and 96 px vertically, and the drift stays inside that margin.
+6% is the floor: below that the move is invisible on a phone. The move scales the precomp, so content must stay inside `SAFE` — at 112% the frame crops 58 px horizontally and 103 px vertically, and the drift stays inside that margin.
+
+The camera is two nulls, one property per level, so nothing overwrites anything:
+
+| level | carries |
+|---|---|
+| `camRoot` | the impact shake (position) and the drift breath (scale) |
+| `cam` | the slow pan and push above |
+| scene layer | its transition |
+
+**Shake** fires on `cut` and `dip` entrances only: 16 px on x and 9.6 px on y, decaying to rest in 0.33 s, peaking 0.10 s after the cut so it lands on content rather than on the incoming scene's empty first frames. Transitions that already carry motion (`whip`, `fold`, `zoom`, the wipes) get none.
+
+**Drift** is a 1.5 % breath over a 2.4 s period on `camRoot`'s scale. It never goes below 100 %: during a whip the two scenes have different `camRoot`s, and a scene scaled under 100 % would leave a gap at the seam.
 
 ## Duration and hold
 
