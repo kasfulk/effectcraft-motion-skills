@@ -15,3 +15,5 @@ The OFL/Apache fonts are no longer redistributed here; `node bin/ecm.mjs fonts -
 The 320 SFX Kit WAVs are not stored here; `sounds.json` lists each file with its sha256 for download on demand.
 
 The Mixkit License allows use inside videos but not redistributing the sound files on their own. The five beds in the mixed row may include Mixkit material.
+
+New files added under `assets/` need a row here: path, source URL, license, and whether attribution is required. Where to find them, and what the engine can ingest: [../reference/assets.md](../reference/assets.md).
