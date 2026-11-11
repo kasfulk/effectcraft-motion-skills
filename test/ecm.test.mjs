@@ -227,10 +227,10 @@ test("transitions: MAIN emits overlap and per-type JSX, totals untouched", () =>
   assert.ok(src.includes("1, dur + ov, 30)"), "comp extended by incoming overlap");
   // content lives to the comp end so the incoming layer crossfades over it
   assert.ok(src.includes("exitAll(c, dur + ov)"), "exitAll spans the comp");
-  // motion blur: comp switch on, every layer switch on, Main too
+  // motion blur: comp switch on, every layer switch on except expression-driven counters, Main too
   assert.ok(src.includes("c.motionBlur = true"), "scene comp motion blur on");
   assert.ok(src.includes("main.motionBlur = true"), "Main comp motion blur on");
-  assert.ok(src.includes("c.layer(mb).motionBlur = true"), "scene layers motion blur on");
+  assert.ok(src.includes("ml.motionBlur = !expr"), "scene layers motion blur on, counters excluded");
   assert.ok(src.includes("main.layer(mb2).motionBlur = true"), "Main layers motion blur on");
   // totals: durationOf ignores the transition field
   for (const s of scenes) assert.equal(durationOf({...s, transition:undefined}, reel), durationOf(s, reel));

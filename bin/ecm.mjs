@@ -375,7 +375,13 @@ const MAIN = String.raw`
     trans.push(tr);
     // outgoing content stays visible through the transition window so the incoming layer crossfades over it
     exitAll(c, dur + ov);
-    for (var mb = 1; mb <= c.numLayers; mb++) c.layer(mb).motionBlur = true;
+    for (var mb = 1; mb <= c.numLayers; mb++) {
+      var ml = c.layer(mb), expr = null;
+      try { expr = ml.property('Source Text').expression; } catch (e) {}
+      // A counting number must not be motion-blurred: eight shutter samples of a changing
+      // Source Text smear several values on top of each other and the digits stop reading.
+      ml.motionBlur = !expr;
+    }
     pre.push(c); starts.push(at); settle.push(entered); at += dur;
   }
   var main = app.project.items.addComp('Main', 1080, 1920, 1, at, 30);

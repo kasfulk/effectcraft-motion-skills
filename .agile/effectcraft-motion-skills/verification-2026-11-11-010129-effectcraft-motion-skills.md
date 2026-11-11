@@ -587,3 +587,26 @@ Every comp had a 180° shutter and 16 samples, but all 499 layers had `motion_bl
 | No regression | `node --test test/ecm.test.mjs` | 46/46 pass |
 | No regression | `node scripts/smoke-layouts.mjs` | 50/50 cases build |
 | Examples valid | `check` on hemat / all-scenes / motion-gallery | exit 0 each |
+
+## Verification 3c — counter motion blur (2026-11-11 11:05)
+
+Symptom: every counting number rendered doubled ("RP 4̶6̶2̶.000" over "430.000"), unreadable for
+the whole count window. Reproduced in a direct `render-frame` at 10.6 s, so not an h264 artifact.
+
+Cause: `bin/ecm.mjs` turns motion blur on for every scene layer with 8 samples. A `Source Text`
+driven by a counter expression changes ~17 000 units per shutter interval, so the eight samples
+stack several values in one layer.
+
+Fix: the post-build blur loop reads each layer's `Source Text` expression and skips blur on those.
+One place, so it covers `stat` (4 layouts), `bars`, `donut` and the two `scenes-extra` counters.
+
+| Criterion | Command | Observed |
+|---|---|---|
+| Counter reads as one value | `render-frame --comp Main --time 10.6` | `RP 470.197`, single crisp number |
+| Blur still on elsewhere | generated script | `ml.motionBlur = !expr` — only expression layers skipped |
+| Tests | `node --test test/ecm.test.mjs` | 46/46 pass |
+| Layouts | `node scripts/smoke-layouts.mjs` | 50/50 build |
+| Examples | `check` on hemat / all-scenes / motion-gallery | exit 0 each |
+
+Test updated: the motion-blur assertion pinned the literal `c.layer(mb).motionBlur = true`, which the
+fix replaced; it now asserts the counter exception instead of the old source text.
