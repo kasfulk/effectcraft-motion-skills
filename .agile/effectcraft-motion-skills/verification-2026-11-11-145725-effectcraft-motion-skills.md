@@ -79,6 +79,56 @@ $ effectcraft-cli get S1_donut 4 transform/opacity --time 1.5 --json /tmp/donut.
 Left untouched: deciding whether those three are stale expectations or a real animation regression
 is a separate investigation, and deleting the assertions would hide a possible regression.
 
-Everything the smoke suite exercises up to the `cta` assertion passes when the two dead
-assertions are removed from a copy of the script — 46 unit tests, every preview, every theme,
-the deck render, and the render lock.
+## What the smoke runs actually covered
+
+Each smoke run stops at its first failing assertion, so no single run reached the end. Staging
+the evidence honestly:
+
+| Run | Lines removed from the copy | Reached | Passed before stopping |
+|---|---|---|---|
+| `test/smoke.sh` | none | `donut_track` | 46 unit tests, hostile preview, untitled-bars, 6 theme previews, counter checks, both `text too long` rejections |
+| copy | `donut_track` | `assertFonts` | the above plus `compare-ink`, `steps-ink-title`, `donut-opacity`, `nolabel`, every `run_failure`/`run_success` before the font case |
+| copy | `donut_track`, `assertFonts` | `cta_early` | the above plus all `run_failure`/`run_success`, the slides deck render, the render-lock refusal |
+
+Stages the suite places **after** `cta` — the MP4 render and the audio mux — were never reached
+by any smoke run. They were exercised directly instead:
+
+```
+$ node bin/ecm.mjs render examples/hemat.json
+total  18.37
+examples/hemat.mp4        exit=0
+
+$ node --test test/*.test.mjs   →   ✔ audio: real ffmpeg mux on a generated black video
+```
+
+So: every stage up to and including the slides deck and the render lock is proven on this tree;
+the render and audio stages are proven by direct execution, not by `smoke.sh`.
+
+## What gets uploaded
+
+`git archive` of the shipped commit — no `.git`, no generated media:
+
+```
+$ git archive -o /tmp/skill.zip HEAD && unzip -l /tmp/skill.zip | tail -1
+ 18041468                     127 files          (16 MB)
+```
+
+127 entries including directory headers; 109 actual files. Cap is 200.
+
+## Installer correctness beyond the 400-weight case
+
+`fonts --install` takes the first `url(…ttf)` from the css2 response, so the response shape
+matters. Checked:
+
+```
+$ curl -fsSL -A "Mozilla/4.0" "…family=Noto+Naskh+Arabic:wght@400…" | grep -c "@font-face"
+1                                   # one block per family at this UA — no unicode-range subsetting
+                                    # to pick the wrong one from
+$ rm ~/Library/Fonts/Inter-700.ttf && node bin/ecm.mjs fonts --install
+downloaded 1 of 87 fonts to …/Library/Fonts (0 failed)
+$ fc-scan --format '%{postscriptname} | %{style}\n' ~/Library/Fonts/Inter-700.ttf
+Inter-Bold | Bold                   # 700 request lands on the bold face, not the 400
+```
+
+The `downloaded 1 of 87` line is also the idempotency proof: the other 86 on-disk names matched
+the manifest basenames and were skipped.
