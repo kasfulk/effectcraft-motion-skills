@@ -126,7 +126,7 @@
       "count": 120,
       "target": "word",
       "text": "Fokus",
-      "transition": "zoom"
+      "transition": "whip"
     },
     {
       "type": "zoom",

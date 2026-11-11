@@ -787,3 +787,19 @@ never thickens.
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 12 - whip blur tracks speed (2026-11-11 13:55)
+
+The first cut keyed the blur 45 -> 0 across the whole window, so the frame was at maximum
+blur at `t0` while both layers were still stationary, and sharpened as they accelerated.
+Blur now ramps 0 -> 45 -> 0 with the peak at 40 % of the window, where the eased velocity is
+highest.
+
+`effectcraft-cli get Main S2_counter effects/#1/length --json`:
+
+```
+[(5.8, 0.0), (6.03, 45.0), (6.37, 0.0)]
+```
+
+Rendered at 5.85 / 6.03 / 6.20: sharp at the start, the outgoing `72%` fully smeared at the
+peak with the incoming scene's leading edge soft, sharp again on landing.

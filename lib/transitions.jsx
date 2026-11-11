@@ -147,9 +147,13 @@ function trWhip(comp, theme, a, b, o) {
   ae.property('Direction').setValue(90);
   var be = b.property('Effects').addProperty('Directional Blur');
   be.property('Direction').setValue(90);
-  // the blur peaks with the speed and returns to zero, so the incoming frame lands sharp
-  animate(ae.property('Blur Length'), t0, end, blurLen, 0, 'smooth');
-  animate(be.property('Blur Length'), t0, end, blurLen, 0, 'smooth');
+  // Blur tracks speed, not the window: zero at the start (the layers are still), peak at the
+  // midpoint where the eased velocity is highest, zero again on landing so both frames are sharp.
+  var peak = t0 + 0.4 * dur;
+  animate(ae.property('Blur Length'), t0, peak, 0, blurLen, 'smooth');
+  animate(ae.property('Blur Length'), peak, end, blurLen, 0, 'smooth');
+  animate(be.property('Blur Length'), t0, peak, 0, blurLen, 'smooth');
+  animate(be.property('Blur Length'), peak, end, blurLen, 0, 'smooth');
   var ap = a.transform.position, bp = b.transform.position;
   ap.setValueAtTime(t0, [540, 960]);
   animate(ap, t0, end, [540, 960], [540 - dir * travel, 960], 'smooth');
