@@ -829,3 +829,37 @@ Three `stat` scenes, theme `kinetik`, `value` 40 / 60 / 80:
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 14 - lint judges the layout that renders (2026-11-11 14:45)
+
+C11 and C15 compared `scene.layout || "default"`, i.e. what the spec declared, so they kept
+warning about repetition the renderer now resolves on its own. Both now use
+`resolvedLayouts(spec, theme)`, which mirrors `sceneLayout()`: explicit scene layout, else the
+theme pin, else rotation by per-type occurrence.
+
+| spec | before | after |
+|---|---|---|
+| 3 donut + 2 compare + 2 bars, no explicit layouts | C11 + C15 fired | neither fires; renders ring/gauge/multi, stack/split, vertical/horizontal |
+| 2 stat scenes both `layout:"left"` | C11 fired | C11 still fires - an explicit repeat is a real repeat |
+
+## Verification 15 - full render through effectcraft-cli (2026-11-11 14:50)
+
+`node bin/ecm.mjs render examples/motion-gallery.json`
+
+```
+engine  effectcraft-cli render --project examples/motion-gallery.ecproj --comp Main --out .../motion-gallery.mp4 --format h264
+total  55.00
+```
+
+`ffprobe`: h264, 1080x1920, 55.000000 s, 103,025,134 bytes.
+`ffmpeg -vf blackdetect=d=0.1:pix_th=0.10`: no black frames.
+
+Whip sampled from the encoded file at 25.05 / 25.23 / 25.45 (blur keys 25.0 -> 25.23 -> 25.57):
+sharp timeline, fully smeared at the peak with the incoming scene's leading edge soft, sharp
+particles scene on landing. No background strip at any of the three.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |

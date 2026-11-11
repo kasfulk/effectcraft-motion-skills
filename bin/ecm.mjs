@@ -27,6 +27,22 @@ export const LAYOUTS = {
   compare: ["stack", "split"],
   outro: ["center", "pill", "handle"]
 };
+export const DEFAULT_LAYOUT = { hook: "center", kinetic: "slide", quote: "center", stat: "center", bars: "vertical", donut: "ring", steps: "list", compare: "stack", outro: "center" };
+// The layout each scene actually renders with: an explicit scene layout wins, otherwise the
+// theme pin, and each later scene of the same type rotates one step. Mirrors sceneLayout() in
+// lib/scenes.jsx so the lint judges what is drawn, not what was declared.
+export function resolvedLayouts(spec, theme) {
+  const seen = {};
+  return (spec?.scenes || []).map((s) => {
+    const type = s?.type, nth = seen[type] || 0;
+    seen[type] = nth + 1;
+    if (s?.layout) return s.layout;
+    const base = (theme?.layouts && theme.layouts[type]) || DEFAULT_LAYOUT[type];
+    const opts = LAYOUTS[type], k = opts ? opts.indexOf(base) : -1;
+    return k < 0 ? base : opts[(k + nth) % opts.length];
+  });
+}
+
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
 export const THEME_COLOR_KEYS = ["base","ink","accent","muted","data","sheet","marker"];
 export const THEME_FONT_KEYS = ["display","body","label","quote","arabic"];
@@ -339,13 +355,13 @@ const MAIN = String.raw`
     {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,912]},  // push in, crane up
     {s0:[112,112], s1:[106,106], p0:[540,960], p1:[566,960]}   // pull out, drift right
   ];
-  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
+  var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0, seen = {};
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
-    var seen = seen || {};
     var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
     var ov = TRLEN[tr] || 0;
-    SCENE_N = i + 1; SCENE_NTH = seen[type] = (seen[type] || 0); seen[type] = SCENE_NTH + 1;
+    // SCENE_NTH is how many scenes of this type came before, so sceneLayout can rotate.
+    SCENE_N = i + 1; SCENE_NTH = seen[type] || 0; seen[type] = SCENE_NTH + 1;
     var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur + ov, 30);
     c.motionBlur = true; c.motionBlurSamples = 8;
     bgFor(c, THEME, scene.bg);
@@ -783,9 +799,10 @@ export function lint(spec, theme, durs) {
     add("C10", "spec", `${dataScenes} data scenes: numbers without a line of meaning`, `add a kinetic, steps, or quote scene that says what the numbers mean`);
 
   // C11 same type and layout back to back
+  const resolved = resolvedLayouts(spec, theme);
   for (let i = 1; i < scenes.length; i++) {
     const a = scenes[i - 1], b = scenes[i];
-    if (a?.type === b?.type && (a.layout || "default") === (b.layout || "default"))
+    if (a?.type === b?.type && resolved[i - 1] === resolved[i])
       add("C11", at(i, b.type), `same type and layout as scene ${i}`, `change "layout" on one of them (${(LAYOUTS[b.type] || []).join("|")})`);
   }
 
@@ -807,7 +824,7 @@ export function lint(spec, theme, durs) {
   });
 
   // C15 layout variety
-  const layouts = scenes.map((s) => `${s.type}:${s.layout || "default"}`);
+  const layouts = scenes.map((s, i) => `${s.type}:${resolved[i]}`);
   const dup = new Set(layouts.filter((x, i) => layouts.indexOf(x) !== i));
   if (dup.size >= 2) add("C15", "spec", `${dup.size} layouts repeat`, `vary "layout" across scenes`);
 
