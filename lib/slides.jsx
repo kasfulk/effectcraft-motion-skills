@@ -19,20 +19,20 @@ function slideSafe(W, H) {
   return { x0: 72, x1: W - 72, y0: 96, y1: H - 120 };
 }
 
-function slideMeasure(str, font, size, maxW, maxH, align) {
+function slideMeasure(str, font, size, maxW, maxH) {
   var lines = wrapWords(str, font, size, maxW);
   var w = 0; for (var i = 0; i < lines.length; i++) w = Math.max(w, measure(lines[i], font, size));
   var h = lines.length * size * 1.12;
   return { w: w, h: h, fits: w <= maxW && h <= maxH };
 }
 
-function slideText(comp, tpl, theme, o, W, H) {
+function slideText(comp, o, W, H) {
   if (!o || !o.text) throw new Error('slide text is required');
   var safe = slideSafe(W, H);
   var maxW = safe.x1 - safe.x0, maxH = o.maxH || safe.y1 - safe.y0;
   var size = 96;
   while (size >= 44) {
-    var m = slideMeasure(o.text, o.font, size, maxW, maxH, o.align);
+    var m = slideMeasure(o.text, o.font, size, maxW, maxH);
     if (m.fits) break;
     size -= 6;
   }
@@ -45,7 +45,7 @@ function slideGround(comp, tpl, W, H) {
   return rect(comp, { x: W / 2, y: H / 2, w: W, h: H, fill: tpl.bg, origin: 'center', name: 'background', comment: 'bg' });
 }
 
-function slideAccentBand(comp, tpl, theme, W, H, dur) {
+function slideAccentBand(comp, tpl, theme, W, H) {
   var band = rect(comp, { x: 0, y: 0, w: W, h: 14, fill: tpl.accent, origin: 'left', comment: 'decor', name: 'accent-band' });
   animate(band.transform.position, 0, 0.4, [0, -14], [0, 0], theme.easing);
   var foot = rect(comp, { x: 0, y: H, w: W, h: 6, fill: tpl.accent, origin: 'left', comment: 'decor', name: 'accent-foot' });
@@ -66,7 +66,7 @@ function slideProgress(comp, tpl, theme, page, total, W, H) {
   return 1.0;
 }
 
-function slideHandle(comp, tpl, theme, W, H, dur) {
+function slideHandle(comp, tpl, theme, W, H) {
   if (!tpl.handle) return 0;
   var l = text(comp, tpl.handle, { font: theme.fonts.label || theme.fonts.body, size: 30, min: 30, color: onColor(theme, tpl.bg), align: 'center', x: W / 2, y: H - 144, maxW: W - 144, maxH: 44, name: 'handle' });
   l.layer.transform.opacity.setValue(55);
@@ -101,7 +101,7 @@ var SLIDES = {
       // Bottom band: source (left) + page number (right) on one row, handle centred below it.
       var topY = safe.y0 + (slide.lead ? 84 : 0), bottomY = H - 240;
       var o = { text: slide.text, font: theme.fonts.body, color: tpl.look === 'graphic' ? tpl.ink : onColor(theme, tpl.bg), align: align, x: align === 'center' ? W / 2 : safe.x0, y: topY, maxH: bottomY - topY, name: 'slide-text' };
-      var res = slideText(comp, tpl, theme, o, W, H);
+      var res = slideText(comp, o, W, H);
       if (slide.source) {
         sourceRes = text(comp, slide.source, { font: theme.fonts.label || theme.fonts.body, size: 28, min: 28, color: onColor(theme, tpl.bg), align: align, x: align === 'center' ? W / 2 : safe.x0, y: bottomY, maxW: safe.x1 - safe.x0, maxH: 44, name: 'source' });
       }
@@ -115,7 +115,7 @@ var SLIDES = {
       settle = Math.max(revealEnd, slideEmphasis(comp, tpl, theme, res, slide, revealEnd));
     } else {
       var po = { text: slide.text, font: theme.fonts.display, color: onColor(theme, tpl.bg), align: align, x: align === 'center' ? W / 2 : safe.x0, y: (safe.y0 + safe.y1) / 2 - 60, maxH: safe.y1 - safe.y0, name: 'slide-text' };
-      var pRes = slideText(comp, tpl, theme, po, W, H);
+      var pRes = slideText(comp, po, W, H);
       revealText(pRes.layer, 0.15, 0.9, theme.easing);
       settle = Math.max(1.05, slideEmphasis(comp, tpl, theme, pRes, slide, 1.05));
     }

@@ -1,0 +1,611 @@
+{
+  "BebasNeue-Regular": {
+    "family": "Bebas Neue",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/bebasneue/BebasNeue-400.ttf"
+  },
+  "Anton-Regular": {
+    "family": "Anton",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/anton/Anton-400.ttf"
+  },
+  "ArchivoBlack-Regular": {
+    "family": "Archivo Black",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/archivoblack/ArchivoBlack-400.ttf"
+  },
+  "SpaceGrotesk-Medium": {
+    "family": "Space Grotesk,Space Grotesk Medium",
+    "style": "Medium,Regular",
+    "weight": 500,
+    "category": "display",
+    "file": "assets/fonts/spacegrotesk/SpaceGrotesk-500.ttf"
+  },
+  "SpaceGrotesk-Bold": {
+    "family": "Space Grotesk",
+    "style": "Bold",
+    "weight": 700,
+    "category": "display",
+    "file": "assets/fonts/spacegrotesk/SpaceGrotesk-700.ttf"
+  },
+  "Syne-Bold": {
+    "family": "Syne",
+    "style": "Bold",
+    "weight": 700,
+    "category": "display",
+    "file": "assets/fonts/syne/Syne-700.ttf"
+  },
+  "Syne-ExtraBold": {
+    "family": "Syne,Syne ExtraBold",
+    "style": "ExtraBold,Regular",
+    "weight": 800,
+    "category": "display",
+    "file": "assets/fonts/syne/Syne-800.ttf"
+  },
+  "Unbounded-Bold": {
+    "family": "Unbounded",
+    "style": "Bold",
+    "weight": 700,
+    "category": "display",
+    "file": "assets/fonts/unbounded/Unbounded-700.ttf"
+  },
+  "InstrumentSerif-Regular": {
+    "family": "Instrument Serif",
+    "style": "Regular",
+    "weight": 400,
+    "category": "serif",
+    "file": "assets/fonts/instrumentserif/InstrumentSerif-400.ttf"
+  },
+  "PlayfairDisplay-Regular": {
+    "family": "Playfair Display",
+    "style": "Regular",
+    "weight": 400,
+    "category": "serif",
+    "file": "assets/fonts/playfairdisplay/PlayfairDisplay-400.ttf"
+  },
+  "PlayfairDisplay-Bold": {
+    "family": "Playfair Display",
+    "style": "Bold",
+    "weight": 700,
+    "category": "serif",
+    "file": "assets/fonts/playfairdisplay/PlayfairDisplay-700.ttf"
+  },
+  "Fraunces-Bold": {
+    "family": "Fraunces",
+    "style": "Bold",
+    "weight": 700,
+    "category": "serif",
+    "file": "assets/fonts/fraunces/Fraunces-700.ttf"
+  },
+  "DMSerifDisplay-Regular": {
+    "family": "DM Serif Display",
+    "style": "Regular",
+    "weight": 400,
+    "category": "serif",
+    "file": "assets/fonts/dmserifdisplay/DMSerifDisplay-400.ttf"
+  },
+  "BricolageGrotesque-Bold": {
+    "family": "Bricolage Grotesque",
+    "style": "Bold",
+    "weight": 700,
+    "category": "display",
+    "file": "assets/fonts/bricolagegrotesque/BricolageGrotesque-700.ttf"
+  },
+  "Oswald-Medium": {
+    "family": "Oswald,Oswald Medium",
+    "style": "Medium,Regular",
+    "weight": 500,
+    "category": "condensed",
+    "file": "assets/fonts/oswald/Oswald-500.ttf"
+  },
+  "Oswald-Bold": {
+    "family": "Oswald",
+    "style": "Bold",
+    "weight": 700,
+    "category": "condensed",
+    "file": "assets/fonts/oswald/Oswald-700.ttf"
+  },
+  "BarlowCondensed-SemiBold": {
+    "family": "Barlow Condensed SemiBold",
+    "style": "Regular",
+    "weight": 600,
+    "category": "condensed",
+    "file": "assets/fonts/barlowcondensed/BarlowCondensed-600.ttf"
+  },
+  "BarlowCondensed-Bold": {
+    "family": "Barlow Condensed",
+    "style": "Bold",
+    "weight": 700,
+    "category": "condensed",
+    "file": "assets/fonts/barlowcondensed/BarlowCondensed-700.ttf"
+  },
+  "Righteous-Regular": {
+    "family": "Righteous",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/righteous/Righteous-400.ttf"
+  },
+  "Monoton-Regular": {
+    "family": "Monoton",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/monoton/Monoton-400.ttf"
+  },
+  "Cinzel-Bold": {
+    "family": "Cinzel",
+    "style": "Bold",
+    "weight": 700,
+    "category": "serif",
+    "file": "assets/fonts/cinzel/Cinzel-700.ttf"
+  },
+  "AbrilFatface-Regular": {
+    "family": "Abril Fatface",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/abrilfatface/AbrilFatface-400.ttf"
+  },
+  "AlfaSlabOne-Regular": {
+    "family": "Alfa Slab One",
+    "style": "Regular",
+    "weight": 400,
+    "category": "slab",
+    "file": "assets/fonts/alfaslabone/AlfaSlabOne-400.ttf"
+  },
+  "Ultra-Regular": {
+    "family": "Ultra",
+    "style": "Regular",
+    "weight": 400,
+    "category": "slab",
+    "file": "assets/fonts/ultra/Ultra-400.ttf"
+  },
+  "Bungee-Regular": {
+    "family": "Bungee",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/bungee/Bungee-400.ttf"
+  },
+  "TitanOne": {
+    "family": "Titan One",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/titanone/TitanOne-400.ttf"
+  },
+  "BowlbyOne-Regular": {
+    "family": "Bowlby One",
+    "style": "Regular",
+    "weight": 400,
+    "category": "display",
+    "file": "assets/fonts/bowlbyone/BowlbyOne-400.ttf"
+  },
+  "PassionOne-Bold": {
+    "family": "Passion One",
+    "style": "Bold",
+    "weight": 700,
+    "category": "display",
+    "file": "assets/fonts/passionone/PassionOne-700.ttf"
+  },
+  "Teko-SemiBold": {
+    "family": "Teko,Teko SemiBold",
+    "style": "SemiBold,Regular",
+    "weight": 600,
+    "category": "condensed",
+    "file": "assets/fonts/teko/Teko-600.ttf"
+  },
+  "FjallaOne-Regular": {
+    "family": "Fjalla One",
+    "style": "Regular",
+    "weight": 400,
+    "category": "condensed",
+    "file": "assets/fonts/fjallaone/FjallaOne-400.ttf"
+  },
+  "Lobster-Regular": {
+    "family": "Lobster",
+    "style": "Regular",
+    "weight": 400,
+    "category": "script",
+    "file": "assets/fonts/lobster/Lobster-400.ttf"
+  },
+  "Pacifico-Regular": {
+    "family": "Pacifico",
+    "style": "Regular",
+    "weight": 400,
+    "category": "script",
+    "file": "assets/fonts/pacifico/Pacifico-400.ttf"
+  },
+  "DancingScript-Bold": {
+    "family": "Dancing Script",
+    "style": "Bold",
+    "weight": 700,
+    "category": "script",
+    "file": "assets/fonts/dancingscript/DancingScript-700.ttf"
+  },
+  "GreatVibes-Regular": {
+    "family": "Great Vibes",
+    "style": "Regular",
+    "weight": 400,
+    "category": "script",
+    "file": "assets/fonts/greatvibes/GreatVibes-400.ttf"
+  },
+  "Caveat-Bold": {
+    "family": "Caveat",
+    "style": "Bold",
+    "weight": 700,
+    "category": "hand",
+    "file": "assets/fonts/caveat/Caveat-700.ttf"
+  },
+  "Kalam-Bold": {
+    "family": "Kalam",
+    "style": "Bold",
+    "weight": 700,
+    "category": "hand",
+    "file": "assets/fonts/kalam/Kalam-700.ttf"
+  },
+  "PermanentMarker-Regular": {
+    "family": "Permanent Marker",
+    "style": "Regular",
+    "weight": 400,
+    "category": "hand",
+    "file": "assets/fonts/permanentmarker/PermanentMarker-400.ttf"
+  },
+  "PatrickHand-Regular": {
+    "family": "Patrick Hand",
+    "style": "Regular",
+    "weight": 400,
+    "category": "hand",
+    "file": "assets/fonts/patrickhand/PatrickHand-400.ttf"
+  },
+  "AmaticSC-Bold": {
+    "family": "Amatic SC",
+    "style": "Bold",
+    "weight": 700,
+    "category": "hand",
+    "file": "assets/fonts/amaticsc/AmaticSC-700.ttf"
+  },
+  "SpecialElite-Regular": {
+    "family": "Special Elite",
+    "style": "Regular",
+    "weight": 400,
+    "category": "typewriter",
+    "file": "assets/fonts/specialelite/SpecialElite-400.ttf"
+  },
+  "CourierPrime-Regular": {
+    "family": "Courier Prime",
+    "style": "Regular",
+    "weight": 400,
+    "category": "typewriter",
+    "file": "assets/fonts/courierprime/CourierPrime-400.ttf"
+  },
+  "CourierPrime-Bold": {
+    "family": "Courier Prime",
+    "style": "Bold",
+    "weight": 700,
+    "category": "typewriter",
+    "file": "assets/fonts/courierprime/CourierPrime-700.ttf"
+  },
+  "VT323-Regular": {
+    "family": "VT323",
+    "style": "Regular",
+    "weight": 400,
+    "category": "pixel",
+    "file": "assets/fonts/vt323/VT323-400.ttf"
+  },
+  "PressStart2P-Regular": {
+    "family": "Press Start 2P",
+    "style": "Regular",
+    "weight": 400,
+    "category": "pixel",
+    "file": "assets/fonts/pressstart2p/PressStart2P-400.ttf"
+  },
+  "Silkscreen-Regular": {
+    "family": "Silkscreen",
+    "style": "Regular",
+    "weight": 400,
+    "category": "pixel",
+    "file": "assets/fonts/silkscreen/Silkscreen-400.ttf"
+  },
+  "Silkscreen-Bold": {
+    "family": "Silkscreen",
+    "style": "Bold",
+    "weight": 700,
+    "category": "pixel",
+    "file": "assets/fonts/silkscreen/Silkscreen-700.ttf"
+  },
+  "Rubik-Medium": {
+    "family": "Rubik,Rubik Medium",
+    "style": "Medium,Regular",
+    "weight": 500,
+    "category": "sans",
+    "file": "assets/fonts/rubik/Rubik-500.ttf"
+  },
+  "Rubik-Bold": {
+    "family": "Rubik",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/rubik/Rubik-700.ttf"
+  },
+  "Nunito-Bold": {
+    "family": "Nunito",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/nunito/Nunito-700.ttf"
+  },
+  "Quicksand-Bold": {
+    "family": "Quicksand",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/quicksand/Quicksand-700.ttf"
+  },
+  "Poppins-SemiBold": {
+    "family": "Poppins SemiBold",
+    "style": "Regular",
+    "weight": 600,
+    "category": "sans",
+    "file": "assets/fonts/poppins/Poppins-600.ttf"
+  },
+  "Poppins-Bold": {
+    "family": "Poppins",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/poppins/Poppins-700.ttf"
+  },
+  "Manrope-Bold": {
+    "family": "Manrope",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/manrope/Manrope-700.ttf"
+  },
+  "Sora-Bold": {
+    "family": "Sora",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/sora/Sora-700.ttf"
+  },
+  "PlusJakartaSans-Bold": {
+    "family": "Plus Jakarta Sans",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/plusjakartasans/PlusJakartaSans-700.ttf"
+  },
+  "Outfit-Bold": {
+    "family": "Outfit",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/outfit/Outfit-700.ttf"
+  },
+  "Figtree-Bold": {
+    "family": "Figtree",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/figtree/Figtree-700.ttf"
+  },
+  "Lexend-Bold": {
+    "family": "Lexend",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/lexend/Lexend-700.ttf"
+  },
+  "WorkSans-Bold": {
+    "family": "Work Sans",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/worksans/WorkSans-700.ttf"
+  },
+  "PublicSans-Bold": {
+    "family": "Public Sans",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/publicsans/PublicSans-700.ttf"
+  },
+  "SourceSans3-Bold": {
+    "family": "Source Sans 3",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/sourcesans3/SourceSans3-700.ttf"
+  },
+  "Inter-Regular": {
+    "family": "Inter",
+    "style": "Regular",
+    "weight": 400,
+    "category": "sans",
+    "file": "assets/fonts/inter/Inter-400.ttf"
+  },
+  "Inter-Bold": {
+    "family": "Inter",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/inter/Inter-700.ttf"
+  },
+  "Montserrat-SemiBold": {
+    "family": "Montserrat,Montserrat SemiBold",
+    "style": "SemiBold,Regular",
+    "weight": 600,
+    "category": "sans",
+    "file": "assets/fonts/montserrat/Montserrat-600.ttf"
+  },
+  "Montserrat-ExtraBold": {
+    "family": "Montserrat,Montserrat ExtraBold",
+    "style": "ExtraBold,Regular",
+    "weight": 800,
+    "category": "sans",
+    "file": "assets/fonts/montserrat/Montserrat-800.ttf"
+  },
+  "DMSans-Bold": {
+    "family": "DM Sans",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/dmsans/DMSans-700.ttf"
+  },
+  "Karla-Bold": {
+    "family": "Karla",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/karla/Karla-700.ttf"
+  },
+  "Cabin-Bold": {
+    "family": "Cabin",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/cabin/Cabin-700.ttf"
+  },
+  "Raleway-Bold": {
+    "family": "Raleway",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/raleway/Raleway-700.ttf"
+  },
+  "JosefinSans-Bold": {
+    "family": "Josefin Sans",
+    "style": "Bold",
+    "weight": 700,
+    "category": "sans",
+    "file": "assets/fonts/josefinsans/JosefinSans-700.ttf"
+  },
+  "RobotoSlab-Bold": {
+    "family": "Roboto Slab",
+    "style": "Bold",
+    "weight": 700,
+    "category": "slab",
+    "file": "assets/fonts/robotoslab/RobotoSlab-700.ttf"
+  },
+  "Bitter-Bold": {
+    "family": "Bitter",
+    "style": "Bold",
+    "weight": 700,
+    "category": "slab",
+    "file": "assets/fonts/bitter/Bitter-700.ttf"
+  },
+  "JetBrainsMono-Regular": {
+    "family": "JetBrains Mono",
+    "style": "Regular",
+    "weight": 400,
+    "category": "mono",
+    "file": "assets/fonts/jetbrainsmono/JetBrainsMono-400.ttf"
+  },
+  "JetBrainsMono-Bold": {
+    "family": "JetBrains Mono",
+    "style": "Bold",
+    "weight": 700,
+    "category": "mono",
+    "file": "assets/fonts/jetbrainsmono/JetBrainsMono-700.ttf"
+  },
+  "SpaceMono-Regular": {
+    "family": "Space Mono",
+    "style": "Regular",
+    "weight": 400,
+    "category": "mono",
+    "file": "assets/fonts/spacemono/SpaceMono-400.ttf"
+  },
+  "SpaceMono-Bold": {
+    "family": "Space Mono",
+    "style": "Bold",
+    "weight": 700,
+    "category": "mono",
+    "file": "assets/fonts/spacemono/SpaceMono-700.ttf"
+  },
+  "IBMPlexMono-Regular": {
+    "family": "IBM Plex Mono",
+    "style": "Regular",
+    "weight": 400,
+    "category": "mono",
+    "file": "assets/fonts/ibmplexmono/IBMPlexMono-400.ttf"
+  },
+  "IBMPlexMono-Bold": {
+    "family": "IBM Plex Mono",
+    "style": "Bold",
+    "weight": 700,
+    "category": "mono",
+    "file": "assets/fonts/ibmplexmono/IBMPlexMono-700.ttf"
+  },
+  "Amiri-Regular": {
+    "family": "Amiri",
+    "style": "Regular",
+    "weight": 400,
+    "category": "arabic",
+    "file": "assets/fonts/amiri/Amiri-400.ttf"
+  },
+  "Amiri-Bold": {
+    "family": "Amiri",
+    "style": "Bold",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/amiri/Amiri-700.ttf"
+  },
+  "ReemKufi-Bold": {
+    "family": "Reem Kufi",
+    "style": "Bold",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/reemkufi/ReemKufi-700.ttf"
+  },
+  "Cairo-Bold": {
+    "family": "Cairo",
+    "style": "Bold",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/cairo/Cairo-700.ttf"
+  },
+  "Tajawal-Bold": {
+    "family": "Tajawal",
+    "style": "Bold",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/tajawal/Tajawal-700.ttf"
+  },
+  "Almarai-Bold": {
+    "family": "Almarai Bold",
+    "style": "Regular",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/almarai/Almarai-700.ttf"
+  },
+  "Lateef-Regular": {
+    "family": "Lateef",
+    "style": "Regular",
+    "weight": 400,
+    "category": "arabic",
+    "file": "assets/fonts/lateef/Lateef-400.ttf"
+  },
+  "NotoNaskhArabic-Regular": {
+    "family": "Noto Naskh Arabic",
+    "style": "Regular",
+    "weight": 400,
+    "category": "arabic",
+    "file": "assets/fonts/notonaskharabic/NotoNaskhArabic-400.ttf"
+  },
+  "NotoNaskhArabic-Bold": {
+    "family": "Noto Naskh Arabic",
+    "style": "Bold",
+    "weight": 700,
+    "category": "arabic",
+    "file": "assets/fonts/notonaskharabic/NotoNaskhArabic-700.ttf"
+  }
+}

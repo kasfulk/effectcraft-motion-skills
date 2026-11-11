@@ -6,20 +6,22 @@
 |---|---|---|---|---|
 | `theme` | yes | string | Must name a key in `themes.json` | Unknown values produce `theme: unknown ...`. |
 | `scenes` | yes | array | Non-empty array | Contains scene objects. |
-| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, or `dip` | Default entrance transition for every scene after the first. Unknown values error. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Default entrance transition for every scene after the first. Unknown values error. |
 | `out` | no | string | Must be a `.mp4` path | Resolved relative to the spec file. Without it, output uses the spec basename plus `.mp4`. |
 
 ## Shared scene fields
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
-| `type` | yes | string | One of `hook`, `kinetic`, `stat`, `bars`, `donut`, `steps`, `compare`, `quote`, `outro`, `custom` | Unknown values produce `type unknown`. |
+| `type` | yes | string | One of `hook`, `kinetic`, `stat`, `bars`, `donut`, `steps`, `compare`, `quote`, `outro`, `counter`, `dotgrid`, `dial`, `orbit`, `cards`, `timeline`, `particles`, `zoom`, `custom` | Unknown values produce `type unknown`. |
 | `title` | no | string | String when present | Used by scene layouts that support a title. |
 | `bg` | no | string | `base`, `ink` or `accent` | Default is the theme base color. |
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
 | `fx` | no | string array | Preset names from [fx.md](fx.md) | Also allowed at spec level; both lists apply. |
+| `atmosphere` | no | string | `none`, `glow`, `grain`, `full` | Overrides the theme's `motion.atmosphere` for this scene. |
+| `elements` | no | string array | Names from `flash`, `rays`, `fog`, `particles`, `cracks`, `lightning`, `fire`, `water` | Decorative elements layered over the scene. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
-| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, or `dip` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
 
 ## `hook`
 
@@ -94,6 +96,90 @@
 | `emphasis` | no | string | See shared fields |  |
 | `bg`, `duration`, `title` | no | string / number | See shared fields | `title` is accepted but not used by the outro builder. |
 
+## `counter`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `value` | yes | number | Finite | Counts up from `from` (default `0`). |
+| `prefix`, `suffix` | no | string | String when present | Wrapped around the formatted value. |
+| `label` | no | string | String when present | Displayed below the value. |
+| `from` | no | number | Finite | Starting value; default `0`. |
+| `curve` | no | string | `ease` or `flicker` | Counting curve; default `ease`. |
+| `race` | no | object | `{to, label?}` | Optional race bar under the counter. |
+
+## `dotgrid`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `count` | yes | number | `1–200` | Number of lit dots. |
+| `cols`, `rows` | no | number | `1–40` | Grid dimensions; builder clamps to `21×18`. |
+| `order` | no | string | `row`, `wave`, `spiral` | Lighting order; default `row`. |
+| `shape` | no | string | `dot`, `bead`, `square` | Dot shape; default `dot`. |
+| `missing` | no | number array | Indices | Dots that stay dim. |
+| `label` | no | string | String when present | Label above the grid. |
+
+## `dial`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `value` | yes | number | Finite | Needle value. |
+| `max` | no | number | Finite | Scale maximum; default `24`. |
+| `marks` | no | number | `2–60` | Tick count; default `12` for `clock`, `24` otherwise. |
+| `labels` | no | string array | Up to `marks` | Tick labels. |
+| `label` | no | string | String when present | Caption below the dial. |
+| `kind` | no | string | `clock`, `gauge`, `sun` | Dial style; default `gauge`. |
+
+## `orbit`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `rings` | yes | object array | `1–5` of `{r, count 1–12, speed}` | Orbiting rings. |
+| `centre` | no | string | `dot`, `word`, `none` | Centre element; default `dot`. |
+| `centreText` | no | string | String when present | Text when `centre` is `word`. |
+| `tilt` | no | number | `0–1` | Vertical squash of the orbit ellipse; default `0.55`. |
+| `settleAt` | no | number | Seconds | When the orbit settles. |
+
+## `cards`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `cards` | yes | object array | `1–9` of `{text, sub?}` | Card contents. |
+| `cols` | no | number | `1–3` | Grid columns; default `3`. |
+| `order` | no | string | `row`, `random` | Entrance order; default `row`. |
+| `flip` | no | boolean | — | Flip-in entrance. |
+| `checks` | no | number array | Card indices | Draw a check mark on those cards. |
+| `stagger` | no | number | Seconds | Delay between cards. |
+
+## `timeline`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `span` | yes | object | `{start, end, unit}` | Axis range and unit label. |
+| `events` | yes | object array | `1–8` of `{at: 0–1, label}` | Events along the axis. |
+| `runner` | no | string | `light`, `none` | Animate a runner along the axis. |
+| `fillTo` | no | number | `0–1` | Fill the axis to this fraction. |
+
+## `particles`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `count` | no | number | `1–120` | Particle count; default `120`. |
+| `target` | no | string | `circle`, `word`, `none` | What the particles gather into. |
+| `text` | no | string | String when present | Word when `target` is `word`. |
+| `gatherAt` | no | number | Seconds | Gather start. |
+| `scatterAt` | no | number | Seconds | Scatter start. |
+| `drift` | no | number | Pixels | Idle drift. |
+
+## `zoom`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `levels` | yes | object array | `1–5` of `{label, kind, n}` | Zoom levels. |
+| `levels[].kind` | yes | string | `dot`, `grid`, `rings` | Level graphic. |
+| `levels[].n` | no | number | Finite | Element count for `grid`/`rings`. |
+| `speed` | no | number | `0.2–3` | Level speed; default `1`. |
+| `holdAt` | no | number | Seconds | Hold per level; default `0.8`. |
+
 ## `custom`
 
 | field | required? | type | limits | notes |
@@ -140,6 +226,13 @@ By default scenes cut hard. A spec-level `transition` sets the default entrance 
 | `wipe` | 0.4 s | Directional `Linear Wipe` of the incoming scene; angle follows `theme.align` (left: 0°, center: 90°). |
 | `slide` | 0.45 s | Incoming scene slides in — from the right on `left` themes, from the bottom on `center` themes. |
 | `dip` | 0.4 s | Dip through a solid of `theme.colors.ink` across the cut. |
+| `fold` | 0.9 s | Fold the outgoing scene away like a panel. |
+| `maskWipe` | 0.9 s | Mask-based wipe with a soft edge. |
+| `pageTurn` | 1.0 s | Page-turn reveal. |
+| `zoom` | 0.7 s | Zoom through the cut. |
+| `glitch` | 0.7 s | RGB-split glitch cut. |
+| `dipSeed` | 1.0 s | Dip through a seed/ink shape. |
+| `colorShift` | 1.4 s | Colour-shift crossfade. |
 
 Lengths are fixed and not user-tunable.
 
@@ -185,7 +278,19 @@ Example (`examples/hemat-audio.json`):
 
 ### Duration and overlap
 
-Scene start times and the total video length are unchanged: a transition overlaps the outgoing scene instead of adding time. The incoming scene's precomp layer starts its transition length early and the outgoing layer's outPoint is extended by the same amount, so `check`, the printed `total`, and the rendered MP4 all still agree. Required holds (`settle + 1.5 s`) and `duration too short` errors are unaffected — the overlap is taken from time that was already there, never from the hold. For `fade`, `wipe`, and `slide` the outgoing scene's own content fade-out (`exitAll`) is shortened to end when the overlap begins, so the two scenes mix rather than fading to background first; `cut` and `dip` keep the full fade-out.
+Scene start times and the total video length are unchanged: a transition overlaps the outgoing scene instead of adding time. The incoming scene's precomp layer starts its transition length early, and that scene's precomp is built `transition length` longer than its nominal duration so the layer never outlives its own content — otherwise the tail renders black. The outgoing layer's outPoint is extended by the same amount, so `check`, the printed `total`, and the rendered MP4 all still agree. Required holds (`settle + 1.5 s`) and `duration too short` errors are unaffected — the overlap is taken from time that was already there, never from the hold. The outgoing scene's content fade-out (`exitAll`) spans the whole extended comp, so the incoming layer crossfades over live content instead of over an empty background.
+
+### Camera
+
+Every scene layer in `Main` gets a slow camera move across its whole span, so no frame is locked. The move cycles by scene index so two shots in a row never move the same way:
+
+| `j % 3` | Move |
+|---|---|
+| 0 | push in, `100% → 106%` |
+| 1 | crane out, `106% → 100%` |
+| 2 | stronger push with a drift, `106% → 110%` plus `+20 px` right and `−16 px` up |
+
+6% is the floor: below that the move is invisible on a phone. The move scales the precomp, so content must stay inside `SAFE` — at 110% the frame crops 54 px horizontally and 96 px vertically, and the drift stays inside that margin.
 
 ## Duration and hold
 

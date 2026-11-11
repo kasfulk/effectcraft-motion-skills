@@ -10,6 +10,7 @@
 
 | preset | layer | engine effect | look | cost (ms/frame, 1080×1920) |
 |---|---|---|---|---|
+| *(built in)* | background | 4-Color Gradient, `base` → `base` −8% | every scene's background is a vertical ramp, not a flat fill | 0 |
 | `grid` | background | Grid, Anchor expression | thin `muted` grid drifting diagonally | 45 |
 | `liquid` | background | 4-Color Gradient + Turbulent Displace | slow `accent`/`muted` color blobs | 115 |
 | `paper` | background | Fractal Noise, Overlay 12% | paper texture | 250 uncached, cached after frame 1 |

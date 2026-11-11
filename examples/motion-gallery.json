@@ -1,0 +1,220 @@
+{
+  "theme": "infopop",
+  "out": "motion-gallery.mp4",
+  "transition": "fade",
+  "scenes": [
+    {
+      "type": "hook",
+      "text": "Uangmu hilang ke mana?",
+      "layout": "split",
+      "emphasis": "hilang"
+    },
+    {
+      "type": "counter",
+      "value": 72,
+      "suffix": "%",
+      "label": "pekerja tanpa dana darurat",
+      "transition": "zoom",
+      "bg": "ink"
+    },
+    {
+      "type": "dotgrid",
+      "count": 114,
+      "cols": 19,
+      "rows": 6,
+      "order": "wave",
+      "label": "114 surat",
+      "transition": "maskWipe"
+    },
+    {
+      "type": "bars",
+      "title": "Pengeluaran",
+      "items": [
+        {
+          "label": "Makan",
+          "value": 42
+        },
+        {
+          "label": "Transport",
+          "value": 28
+        },
+        {
+          "label": "Gaya",
+          "value": 18
+        }
+      ],
+      "highlight": 0,
+      "layout": "horizontal",
+      "transition": "fold",
+      "bg": "accent"
+    },
+    {
+      "type": "dial",
+      "value": 18,
+      "max": 24,
+      "marks": 24,
+      "label": "jam produktif",
+      "kind": "clock",
+      "transition": "pageTurn"
+    },
+    {
+      "type": "orbit",
+      "rings": [
+        {
+          "r": 180,
+          "count": 6,
+          "speed": 1
+        },
+        {
+          "r": 300,
+          "count": 10,
+          "speed": 0.7
+        }
+      ],
+      "centre": "word",
+      "centreText": "Kamu",
+      "transition": "glitch",
+      "bg": "accent"
+    },
+    {
+      "type": "cards",
+      "cards": [
+        {
+          "text": "Catat"
+        },
+        {
+          "text": "Sisihkan"
+        },
+        {
+          "text": "Otomatiskan"
+        }
+      ],
+      "cols": 3,
+      "checks": [
+        0,
+        1,
+        2
+      ],
+      "transition": "dipSeed"
+    },
+    {
+      "type": "timeline",
+      "span": {
+        "start": 2020,
+        "end": 2026,
+        "unit": "tahun"
+      },
+      "events": [
+        {
+          "at": 0,
+          "label": "Mulai"
+        },
+        {
+          "at": 0.5,
+          "label": "Naik"
+        },
+        {
+          "at": 1,
+          "label": "Target"
+        }
+      ],
+      "transition": "colorShift",
+      "bg": "ink"
+    },
+    {
+      "type": "particles",
+      "count": 120,
+      "target": "word",
+      "text": "Fokus",
+      "transition": "zoom"
+    },
+    {
+      "type": "zoom",
+      "levels": [
+        {
+          "label": "Kamu",
+          "kind": "dot"
+        },
+        {
+          "label": "Kota",
+          "kind": "grid",
+          "n": 9
+        },
+        {
+          "label": "Dunia",
+          "kind": "rings",
+          "n": 3
+        }
+      ],
+      "transition": "maskWipe",
+      "bg": "accent"
+    },
+    {
+      "type": "stat",
+      "value": 58,
+      "suffix": "%",
+      "label": "tabungan",
+      "layout": "ring",
+      "transition": "fold"
+    },
+    {
+      "type": "steps",
+      "title": "Mulai",
+      "items": [
+        "Catat",
+        "Sisihkan",
+        "Otomatiskan"
+      ],
+      "layout": "timeline",
+      "transition": "pageTurn",
+      "bg": "ink"
+    },
+    {
+      "type": "compare",
+      "left": {
+        "title": "Sekarang",
+        "points": [
+          "Impulsif",
+          "Tanpa catatan"
+        ]
+      },
+      "right": {
+        "title": "Nanti",
+        "points": [
+          "Terencana",
+          "Terukur"
+        ]
+      },
+      "layout": "split",
+      "transition": "glitch"
+    },
+    {
+      "type": "quote",
+      "text": "Rezeki tidak hilang, hanya berpindah.",
+      "source": "Catatan",
+      "layout": "card",
+      "transition": "dipSeed",
+      "emphasis": "berpindah",
+      "bg": "accent"
+    },
+    {
+      "type": "kinetic",
+      "lines": [
+        "Lihat",
+        "Catat",
+        "Ubah"
+      ],
+      "layout": "mask",
+      "transition": "colorShift"
+    },
+    {
+      "type": "outro",
+      "text": "Mulai hari ini.",
+      "cta": "Follow untuk tips lain",
+      "layout": "pill",
+      "transition": "fade",
+      "emphasis": "hari",
+      "bg": "ink"
+    }
+  ]
+}

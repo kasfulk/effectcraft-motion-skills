@@ -8,9 +8,9 @@ function fmtID(value, decimals) {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return parts.length > 1 ? parts[0] + ',' + parts[1] : parts[0];
 }
-function counterExpr(t0, t1, value, prefix, suffix) {
+function counterExpr(t0, t1, value, prefix, suffix, from) {
   var dec = String(value).split('.')[1], fmt = fmtID.toString();
-  return '(function(){var fmt=' + fmt + ';return ' + JSON.stringify(prefix || '') + '+fmt(ease(time,' + t0 + ',' + t1 + ',0,' + value + '),' + (dec ? dec.length : 0) + ')+' + JSON.stringify(suffix || '') + ';})()';
+  return '(function(){var fmt=' + fmt + ';return ' + JSON.stringify(prefix || '') + '+fmt(ease(time,' + t0 + ',' + t1 + ',' + (from || 0) + ',' + value + '),' + (dec ? dec.length : 0) + ')+' + JSON.stringify(suffix || '') + ';})()';
 }
 function rgb(hex) {
   var h = String(hex).replace(/^#/, '');
@@ -24,10 +24,26 @@ function onColor(theme, bgHex) {
   var bg = lum(bgHex), base = theme.colors.base, ink = theme.colors.ink;
   return (Math.max(bg, lum(base)) - Math.min(bg, lum(base)) + 0.05) / (Math.min(bg, lum(base)) + 0.05) >= (Math.max(bg, lum(ink)) - Math.min(bg, lum(ink)) + 0.05) / (Math.min(bg, lum(ink)) + 0.05) ? base : ink;
 }
+function shade(hex, amt) {
+  var h = String(hex).replace(/^#/, ''), out = '#';
+  for (var i = 0; i < 3; i++) {
+    var v = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+    v = Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+    out += ('0' + v.toString(16)).slice(-2);
+  }
+  return out;
+}
 function bgFor(comp, theme, variant) {
   var fill = theme.colors[variant || 'base'] || theme.colors.base;
   var text = onColor(theme, fill);
-  var b = rect(comp, {x:540, y:960, w:1080, h:1920, fill:fill, origin:'center', name:'background', comment:'bg'});
+  var b = comp.layers.addSolid(rgb(fill), 'background', 1080, 1920, 1);
+  b.comment = 'bg';
+  var deep = shade(fill, -0.08);
+  var e = b.property('Effects').addProperty('4-Color Gradient'), pc = e.property('Positions & Colors');
+  pc.property('Point 1').setValue([0, 0]); pc.property('Color 1').setValue(rgb(fill));
+  pc.property('Point 2').setValue([1080, 0]); pc.property('Color 2').setValue(rgb(fill));
+  pc.property('Point 3').setValue([0, 1920]); pc.property('Color 3').setValue(rgb(deep));
+  pc.property('Point 4').setValue([1080, 1920]); pc.property('Color 4').setValue(rgb(deep));
   if (theme.motifs.indexOf('sheet') >= 0 && fill === theme.colors.base && theme.colors.sheet) rect(comp, {x:60, y:200, w:960, h:1300, fill:theme.colors.sheet, radius:18, origin:'topLeft', name:'sheet', comment:'bg'});
   return {fill:fill, text:text, layer:b};
 }
@@ -97,8 +113,8 @@ function ellipse(comp, o) {
   l.transform.position.setValue([o.cx, o.cy]); l.comment = o.comment || ''; return l;
 }
 function ring(comp, o) {
-  var l = shapeLayer(comp, 'ring'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
-  var p = c.addProperty('ADBE Vector Shape - Ellipse'); p.property('Size').setValue([o.d, o.d]); var st = c.addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(rgb(o.color || THEME.colors.ink)); st.property('Stroke Width').setValue(o.strokeW || 12); var trim = c.addProperty('ADBE Vector Filter - Trim'); l.transform.position.setValue([o.cx, o.cy]); return {layer:l, trim:trim};
+  var l = shapeLayer(comp, o.name || 'ring'), g = l.property('Contents').addProperty('ADBE Vector Group'), c = g.property('Contents');
+  var p = c.addProperty('ADBE Vector Shape - Ellipse'); p.property('Size').setValue([o.d, o.d]); var st = c.addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(rgb(o.color || THEME.colors.ink)); st.property('Stroke Width').setValue(o.strokeW || 12); var trim = c.addProperty('ADBE Vector Filter - Trim'); l.transform.position.setValue([o.cx, o.cy]); l.comment = o.comment || ''; return {layer:l, trim:trim};
 }
 function easeProfile(name) {
   return name === 'calm' ? {out:60, in:60} : name === 'smooth' ? {out:30, in:75} : {out:0.1, in:90};
@@ -121,10 +137,6 @@ function revealText(layer, t0, dur, easing) {
   var a = layer.property('Text').property('Animators').addProperty('ADBE Text Animator'), op = a.property('Properties').addProperty('ADBE Text Opacity'), po = a.property('Properties').addProperty('ADBE Text Position 3D'); op.setValue(-100); po.setValue([0,60,0]); var s = a.property('Selectors').addProperty('ADBE Text Selector'); s.property('Start').setValue(0); s.property('End').setValue(100); var off = s.property('Offset'); off.setValueAtTime(t0, 0); var k0 = off.numKeys; off.setValueAtTime(t0 + dur, 100); var k1 = off.numKeys, profile = easeProfile(easingName), e = easeArray(profile.out, 1), ei = easeArray(profile.in, 1); off.setTemporalEaseAtKey(k0, e, e); off.setTemporalEaseAtKey(k1, ei, e); return layer;
 }
 function colorRange(layer, start, end, hex) { var a = layer.property('Text').property('Animators').addProperty('ADBE Text Animator'), f = a.property('Properties').addProperty('ADBE Text Fill Color'); f.setValue(rgb(hex)); var s = a.property('Selectors').addProperty('ADBE Text Selector'); s.property('Advanced').property('Units').setValue(2); s.property('Start').setValue(start); s.property('End').setValue(end); return a; }
-function assertFonts(theme) {
-  var def = measure('Hamburgefonstiv 0123', '', 100);
-  for (var k in theme.fonts) { var n = theme.fonts[k], got = measure('Hamburgefonstiv 0123', n, 100); if (Math.abs(got - def) <= 0.5) throw new Error('font ' + n + ' is not installed'); }
-}
 function exitAll(comp, dur) { for (var i=1;i<=comp.numLayers;i++) { var l=comp.layer(i); if (l.comment !== 'bg') { var o = l.transform.opacity, t = Math.max(0, dur - 0.3), v0 = o.numKeys === 0 ? o.value : (typeof o.valueAtTime === 'function' ? o.valueAtTime(t, false) : o.keyValue(o.numKeys)); animate(o, t, dur, v0, 0, THEME.easing); } } }
 function checkSafe(comp, t) {
   for (var i=1;i<=comp.numLayers;i++) {

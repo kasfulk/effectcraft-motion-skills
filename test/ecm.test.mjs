@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, muxAudio, FX_NAMES, SLIDE_SIZES } from "../bin/ecm.mjs";
+import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, muxAudio, FX_NAMES, SLIDE_SIZES, TRANSITIONS } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
 test("themes: ids and structure", () => {
@@ -198,12 +198,13 @@ test("transitions: valid values, default + override, first scene ignored", () =>
 });
 
 test("transitions: unknown values error at scene and spec level", () => {
-  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"zoom"}]),
-    ['scene 1 (hook): transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+  const list = `(${TRANSITIONS.join("|")})`;
+  assert.deepEqual(v([{type:"hook", text:"Hai", transition:"bogus"}]),
+    [`scene 1 (hook): transition: unknown "bogus" ${list}`]);
   assert.deepEqual(v([{type:"hook", text:"Hai", transition:5}]),
-    ['scene 1 (hook): transition: unknown 5 (cut|fade|wipe|slide|dip)']);
-  assert.deepEqual(validate({theme:"reel", transition:"zoom", scenes:[{type:"hook", text:"Hai"}]}, T),
-    ['transition: unknown "zoom" (cut|fade|wipe|slide|dip)']);
+    [`scene 1 (hook): transition: unknown 5 ${list}`]);
+  assert.deepEqual(validate({theme:"reel", transition:"bogus", scenes:[{type:"hook", text:"Hai"}]}, T),
+    [`transition: unknown "bogus" ${list}`]);
 });
 
 test("transitions: MAIN emits overlap and per-type JSX, totals untouched", () => {
@@ -215,13 +216,22 @@ test("transitions: MAIN emits overlap and per-type JSX, totals untouched", () =>
     {type:"outro", text:"Done", transition:"dip"},
   ];
   const src = buildScript({theme:"reel", transition:"slide", scenes}, reel, durs);
-  assert.ok(src.includes("TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4}"), "fixed lengths");
+  assert.ok(src.includes("TRLEN = {"), "transition lengths emitted");
+  assert.ok(src.includes('"fade":0.35') && src.includes('"wipe":0.4') && src.includes('"slide":0.45') && src.includes('"dip":0.4'), "core lengths");
   assert.ok(src.includes("l.startTime = st - ov"), "incoming starts early");
   assert.ok(src.includes("addProperty('Linear Wipe')"), "wipe effect");
   assert.ok(src.includes("'Wipe Angle'"), "wipe angle param");
-  assert.ok(src.includes("addSolid(rgb(THEME.colors.ink), 'dip'"), "dip solid");
-  // overlap never eats the hold: exitAll shortens only for overlapping transitions
-  assert.ok(src.includes("tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0)"), "exitAll skip");
+  assert.ok(src.includes("'dip-seed'"), "dip seed solid");
+  assert.ok(src.includes("addSolid(rgb(THEME.colors.ink), 'dip'"), "MAIN dip solid");
+  // comp is extended by the incoming overlap so the layer never outlives its precomp
+  assert.ok(src.includes("1, dur + ov, 30)"), "comp extended by incoming overlap");
+  // content lives to the comp end so the incoming layer crossfades over it
+  assert.ok(src.includes("exitAll(c, dur + ov)"), "exitAll spans the comp");
+  // motion blur: comp switch on, every layer switch on, Main too
+  assert.ok(src.includes("c.motionBlur = true"), "scene comp motion blur on");
+  assert.ok(src.includes("main.motionBlur = true"), "Main comp motion blur on");
+  assert.ok(src.includes("c.layer(mb).motionBlur = true"), "scene layers motion blur on");
+  assert.ok(src.includes("main.layer(mb2).motionBlur = true"), "Main layers motion blur on");
   // totals: durationOf ignores the transition field
   for (const s of scenes) assert.equal(durationOf({...s, transition:undefined}, reel), durationOf(s, reel));
 });

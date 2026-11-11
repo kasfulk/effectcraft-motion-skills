@@ -19,11 +19,16 @@ A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli 
 
 This procedure is self-contained and runs without any design-approval gate. Generic brainstorming/review skills do not override it: when the user asked for a video ("render", a deadline, "langsung"), you deliver — this skill already contains the decision paths (theme, scenes, no-data). Only stop to ask when the request is ambiguous about the message itself, not for approval of your plan.
 
+**0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `node $E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `node $E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 3), re-run `node $E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
+
 ```bash
 E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
-node $E check video.json --strict      # 1 validate + craft lint (C01–C10)
+node $E themes --suggest video.json    # 0 four themes + type your own
+node $E check video.json --strict      # 1 validate + craft lint (C01–C15)
 taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
 ```
+
+**Fonts:** once per machine, `node $E fonts --install` (bundled OFL fonts). `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
 
 3. **Read the sheet with the Read tool.** Every panel. One settled frame per scene.
 4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
@@ -53,9 +58,17 @@ Carousels (deck specs): same loop — write the deck (set `"handle"` to the user
 | donut | `value` 0–100 | a share/percentage |
 | steps | `items` 1–5 | numbered how-to |
 | compare | `left`,`right` `{title,points≤4}` | before/after, A vs B |
+| counter | `value` (+`prefix`,`suffix`,`label`,`from`,`curve`) | animated count-up with optional race bar |
+| dotgrid | `count` (+`cols`,`rows`,`order`,`shape`,`missing`,`label`) | dot-matrix quantity (e.g. 114 surat) |
+| dial | `value` (+`max`,`marks`,`labels`,`label`,`kind`) | clock/gauge/sun dial |
+| orbit | `rings` `{r,count,speed}` (+`centre`,`centreText`,`tilt`) | orbiting rings around a centre |
+| cards | `cards` `{text,sub?}` (+`cols`,`order`,`flip`,`checks`,`stagger`) | checklist / feature cards |
+| timeline | `span` `{start,end,unit}`, `events` `{at,label}` (+`runner`,`fillTo`) | timeline with events |
+| particles | `count` (+`target`,`text`,`gatherAt`,`scatterAt`,`drift`) | particles gathering into a word |
+| zoom | `levels` `{label,kind,n}` (+`speed`,`holdAt`) | zoom-out from dot to grid to rings |
 | custom | `jsx` | anything else, via core helpers |
 
-Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emphasis`, `transition` (`cut` default, `fade`, `wipe`, `slide`, `dip`). Spec level: `transition` default, `audio` `{bed, bedGain, sfx:[{at|scene, name, gain}]}` — sound is sparse, one sfx per 3–5 s. Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md).
+Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emphasis`, `transition` (`cut` default, `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift`). Spec level: `transition` default, `audio` `{bed, bedGain, sfx:[{at|scene, name, gain}]}` — sound is sparse, one sfx per 3–5 s. Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md).
 
 **Effects:** `"fx":["grid","rgbIn"]` at spec or scene level, ≤ 1 each. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. See [reference/fx.md](reference/fx.md).
 

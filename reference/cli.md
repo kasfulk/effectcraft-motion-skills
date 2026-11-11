@@ -115,6 +115,8 @@ another render is running (remove /tmp/ecm-render.lock if not)
 
 If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Other exact errors include the final engine error and `missing ECM output`. `total` is the final length (matches the MP4); the `out` directory is created if missing. A render always releases `/tmp/ecm-render.lock` on exit.
 
+Every generated comp has motion blur on (`comp.motionBlur = true`, 180° shutter, 8 samples) and every layer has the motion-blur switch set, so fast moves — transitions, scale pops, camera drift — smear instead of stepping. 8 samples is the speed/quality tradeoff: 16 samples costs ~3.5x render time for a difference you cannot see at 1080x1920. There is no per-scene opt-out; a scene that must stay crisp needs its own `custom` JSX.
+
 If the spec has an `audio` block (see [scenes.md](scenes.md)), the silent MP4 is post-muxed with ffmpeg in place (via a `.tmp.mp4` + rename): bed looped to full length with fade-in/out, sparse sfx delayed to their resolved times, mixed, loudness-normalized, and muxed with `-c:v copy`. `render` prints `audio: muxed N sfx + bed` or `audio: none` before the MP4 path; a mux failure prints `audio mux failed: ...` and exits 1.
 
 ### `new`
@@ -168,7 +170,7 @@ $C render-frame --project $F --comp Main --time 2.5 --max-side 480 --out frame.p
 $C script FILE.jsx --empty --save-as $F                    # run AE-style JSX
 ```
 
-The generated script uses PostScript font names, including `HelveticaNeue-CondensedBlack`, `HelveticaNeue-Medium`, `Inter-ExtraBold`, `Inter-Medium`, `JetBrainsMono-Medium`, `Montserrat-ExtraBold`, `Montserrat-SemiBold`, `DINCondensed-Bold`, `AvenirNextCondensed-DemiBold`, `AvenirNext-Medium`, `AvenirNext-Regular`, `AvenirNext-DemiBold`, `AvenirNext-Bold`, and `PlayfairDisplayRoman-Bold`. `PlayfairDisplay-Bold` and `Inter-Regular` do not resolve.
+The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Install them once with `node bin/ecm.mjs fonts --install`; `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
 
 ## Pitfalls (verified)
 
@@ -177,7 +179,7 @@ The generated script uses PostScript font names, including `HelveticaNeue-Conden
 - `setValueAtTime` returns no key index. Read `prop.numKeys` right after the call.
 - Scale values are vec3. The Scale matchName is `ADBE Scale`.
 - The text selector Units default is percent. `setValue(2)` switches it to index units.
-- Unknown fonts silently fall back to the default. Detect this by comparing measured widths.
+- Unknown fonts silently fall back to the engine default (Inter). `preview`/`render` check the theme's fonts against `effectcraft-cli exec text.fonts` before building, so a missing font fails fast instead of rendering in the wrong face.
 - The montage default label font is missing, so pass `-font /System/Library/Fonts/Helvetica.ttc`.
 - `sourceRectAtTime` reports stroked shapes about 13 px wider per side.
 - A static opacity is overwritten by any later keyed animation that starts from a hard-coded value.

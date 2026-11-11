@@ -1,17 +1,32 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync, copyFileSync } from "node:fs";
+import { tmpdir, homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom"];
+export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom",
+  "counter", "dotgrid", "dial", "orbit", "cards", "timeline", "particles", "zoom"];
 
 const FPS = 30;
 const RENDER_LOCK = "/tmp/ecm-render.lock";
 const TEXT_TYPES = ["hook", "quote", "outro"];
-const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx", "transition"]);
-export const TRANSITIONS = ["cut", "fade", "wipe", "slide", "dip"];
+const NOT_WORDS = new Set(["type", "bg", "emphasis", "jsx", "fx", "transition", "layout", "elements", "atmosphere", "surface", "kind", "order", "corner", "axis", "hinge", "shape", "seed", "curve"]);
+export const TRANSITIONS = ["cut", "fade", "wipe", "slide", "dip", "fold", "maskWipe", "pageTurn", "zoom", "glitch", "dipSeed", "colorShift"];
+export const TRANSITION_LEN = { cut: 0, fade: 0.35, wipe: 0.4, slide: 0.45, dip: 0.4, fold: 0.9, maskWipe: 0.9, pageTurn: 1.0, zoom: 0.7, glitch: 0.7, dipSeed: 1.0, colorShift: 1.4 };
+export const ELEMENT_NAMES = ["flash", "rays", "fog", "particles", "cracks", "lightning", "fire", "water"];
+export const ATMOSPHERE_NAMES = ["none", "glow", "grain", "full"];
+export const LAYOUTS = {
+  hook: ["center", "split", "bottom"],
+  kinetic: ["slide", "mask", "stagger", "morph", "world"],
+  quote: ["center", "rule", "card"],
+  stat: ["center", "left", "split", "ring"],
+  bars: ["vertical", "horizontal", "race", "lollipop"],
+  donut: ["ring", "gauge", "multi"],
+  steps: ["list", "timeline", "cards"],
+  compare: ["stack", "split", "table"],
+  outro: ["center", "pill", "handle"]
+};
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
 export const THEME_COLOR_KEYS = ["base","ink","accent","muted","data","sheet","marker"];
 export const THEME_FONT_KEYS = ["display","body","label","quote","arabic"];
@@ -79,7 +94,63 @@ function sceneErrors(s) {
     case "custom":
       if (!str(s.jsx)) e.push("jsx required");
       break;
+    case "counter":
+      if (!Number.isFinite(s.value)) e.push("value must be a number");
+      else if (Math.abs(s.value) >= 1e15) e.push("value must be below 1e15");
+      if (s.curve !== undefined && !["ease", "flicker"].includes(s.curve)) e.push("curve must be ease|flicker");
+      if (s.race !== undefined && !(plainObj(s.race) && Number.isFinite(s.race.to) && (s.race.label === undefined || typeof s.race.label === "string"))) e.push("race must be {to, label?}");
+      break;
+    case "dotgrid":
+      if (!(Number.isInteger(s.count) && s.count >= 1)) e.push("count must be a positive integer");
+      if (s.cols !== undefined && !(Number.isInteger(s.cols) && s.cols >= 1 && s.cols <= 40)) e.push("cols must be 1–40");
+      if (s.rows !== undefined && !(Number.isInteger(s.rows) && s.rows >= 1 && s.rows <= 40)) e.push("rows must be 1–40");
+      if (s.order !== undefined && !["row", "spiral", "wave"].includes(s.order)) e.push("order must be row|spiral|wave");
+      if (s.shape !== undefined && !["dot", "bead", "square"].includes(s.shape)) e.push("shape must be dot|bead|square");
+      if (s.missing !== undefined && !(Array.isArray(s.missing) && s.missing.every((i) => Number.isInteger(i) && i >= 0))) e.push("missing must be an array of indices");
+      if (Number.isInteger(s.count) && s.count > 200) e.push("count must be 200 or less (render cost)");
+      break;
+    case "dial":
+      if (!Number.isFinite(s.value)) e.push("value must be a number");
+      if (s.max !== undefined && !(Number.isFinite(s.max) && s.max > 0)) e.push("max must be a positive number");
+      if (s.marks !== undefined && !(Number.isInteger(s.marks) && s.marks >= 2 && s.marks <= 60)) e.push("marks must be 2–60");
+      if (s.kind !== undefined && !["clock", "gauge", "sun"].includes(s.kind)) e.push("kind must be clock|gauge|sun");
+      if (s.labels !== undefined && !(Array.isArray(s.labels) && s.labels.every((x) => typeof x === "string"))) e.push("labels must be an array of strings");
+      break;
+    case "orbit":
+      if (!(Array.isArray(s.rings) && s.rings.length >= 1 && s.rings.length <= 5
+        && s.rings.every((r) => plainObj(r) && Number.isFinite(r.r) && Number.isFinite(r.count) && r.count >= 1 && r.count <= 12))) e.push("rings must be 1–5 of {r, count 1–12, speed}");
+      if (s.centre !== undefined && !["dot", "word", "none"].includes(s.centre)) e.push("centre must be dot|word|none");
+      break;
+    case "cards":
+      if (!(Array.isArray(s.cards) && s.cards.length >= 1 && s.cards.length <= 9
+        && s.cards.every((c) => plainObj(c) && str(c.text)))) e.push("cards must be 1–9 of {text, sub?}");
+      if (s.cols !== undefined && !(Number.isInteger(s.cols) && s.cols >= 1 && s.cols <= 3)) e.push("cols must be 1–3");
+      if (s.order !== undefined && !["row", "random"].includes(s.order)) e.push("order must be row|random");
+      if (s.checks !== undefined && !(Array.isArray(s.checks) && s.checks.every((i) => Number.isInteger(i) && i >= 0))) e.push("checks must be an array of indices");
+      break;
+    case "timeline":
+      if (!(plainObj(s.span) && Number.isFinite(s.span.start) && Number.isFinite(s.span.end) && s.span.end > s.span.start)) e.push("span must be {start, end > start, unit?}");
+      if (!(Array.isArray(s.events) && s.events.length >= 1 && s.events.length <= 8
+        && s.events.every((ev) => plainObj(ev) && Number.isFinite(ev.at) && ev.at >= 0 && ev.at <= 1 && str(ev.label)))) e.push("events must be 1–8 of {at 0..1, label}");
+      if (s.runner !== undefined && !["light", "none"].includes(s.runner)) e.push("runner must be light|none");
+      break;
+    case "particles":
+      if (s.count !== undefined && !(Number.isInteger(s.count) && s.count >= 1 && s.count <= 120)) e.push("count must be 1–120");
+      if (s.target !== undefined && !["circle", "word", "none"].includes(s.target)) e.push("target must be circle|word|none");
+      if (s.target === "word" && !str(s.text)) e.push("text required when target is word");
+      break;
+    case "zoom":
+      if (!(Array.isArray(s.levels) && s.levels.length >= 1 && s.levels.length <= 5
+        && s.levels.every((l) => plainObj(l) && str(l.label) && ["dot", "grid", "rings"].includes(l.kind)))) e.push("levels must be 1–5 of {label, kind: dot|grid|rings, n?}");
+      break;
   }
+  if (s.layout !== undefined) {
+    const allowed = LAYOUTS[s.type];
+    if (!allowed) e.push(`layout: ${s.type} has no layouts`);
+    else if (!allowed.includes(s.layout)) e.push(`layout: unknown "${s.layout}" for ${s.type} (${allowed.join("|")})`);
+  }
+  if (s.elements !== undefined && !(Array.isArray(s.elements) && s.elements.every((n) => ELEMENT_NAMES.includes(n)))) e.push(`elements must be an array of: ${ELEMENT_NAMES.join(", ")}`);
+  if (s.atmosphere !== undefined && !ATMOSPHERE_NAMES.includes(s.atmosphere)) e.push(`atmosphere must be one of: ${ATMOSPHERE_NAMES.join(", ")}`);
   if (s.transition !== undefined && !TRANSITIONS.includes(s.transition)) e.push(`transition: unknown ${JSON.stringify(s.transition)} (${TRANSITIONS.join("|")})`);
   if (s.duration !== undefined && !(Number.isFinite(s.duration) && s.duration >= 1 && s.duration <= 15)) e.push("duration must be 1–15");
   if (s.bg !== undefined && !["base", "ink", "accent"].includes(s.bg)) e.push("bg must be base|ink|accent");
@@ -238,6 +309,10 @@ function dataItems(s) {
   if (s.type === "bars" || s.type === "steps") return s.items.length;
   if (s.type === "kinetic") return s.lines.length;
   if (s.type === "compare") return s.left.points.length + s.right.points.length;
+  if (s.type === "cards") return s.cards.length;
+  if (s.type === "timeline") return s.events.length;
+  if (s.type === "orbit") return s.rings.length;
+  if (s.type === "zoom") return s.levels.length;
   return 0;
 }
 
@@ -256,27 +331,35 @@ const json = (x) => JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2
 const MAIN = String.raw`
 (function () {
   function ceilFrame(s) { return Math.ceil(s * 30) / 30; }
-  assertFonts(THEME);
-  var TRLEN = {fade:0.35, wipe:0.4, slide:0.45, dip:0.4};
+  var TRLEN = ${json(TRANSITION_LEN)};
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
+    var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
+    var ov = TRLEN[tr] || 0;
     SCENE_N = i + 1;
-    var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur, 30);
+    var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur + ov, 30);
+    c.motionBlur = true; c.motionBlurSamples = 8;
     bgFor(c, THEME, scene.bg);
+    if (typeof ATMOSPHERE !== 'undefined') ATMOSPHERE.apply(c, THEME, {atmosphere: scene.atmosphere});
     var entered = 0;
     try {
       if (type === 'custom') {
         var fn = new Function('comp', 'theme', 'scene', 'dur', scene.jsx);
         entered = fn(c, THEME, scene, dur);
         if (typeof entered !== 'number') entered = 0.6 * dur;
-      } else if (SCENES[type]) entered = SCENES[type](c, THEME, scene, dur);
-      else throw new Error('unsupported scene type');
+      } else {
+        var builder = SCENES[type] || (typeof SCENES_EXTRA !== 'undefined' ? SCENES_EXTRA[type] : undefined);
+        if (!builder) throw new Error('unsupported scene type');
+        entered = builder(c, THEME, scene, dur);
+      }
       var hasContent = false;
       for (var li = 1; li <= c.numLayers; li++) if (c.layer(li).comment !== 'bg') { hasContent = true; break; }
       if (!hasContent) throw new Error('renders blank');
       var fxs = (THEME.fx || []).concat(SPEC.fx || [], scene.fx || []);
       entered = Math.max(entered, applyFx(c, THEME, fxs, entered));
+      if (scene.elements && typeof ELEMENTS !== 'undefined') entered = Math.max(entered, ELEMENTS.apply(c, THEME, scene.elements, {dur: dur}));
+      if (typeof ATMOSPHERE !== 'undefined' && ATMOSPHERE.overlay) ATMOSPHERE.overlay(c, THEME, {atmosphere: scene.atmosphere});
       checkSafe(c, entered);
     } catch (e) {
       var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
@@ -285,21 +368,33 @@ const MAIN = String.raw`
     var need = ceilFrame(entered + 1.5);
     if (need > dur) {
       if (scene.duration !== undefined) throw new Error('scene ' + (i + 1) + ' (' + type + '): duration too short, needs ≥ ' + need.toFixed(2) + 's');
-      dur = need; c.duration = dur; finalDurs[i] = dur;
+      var oldDur = dur;
+      dur = need; c.duration = dur + ov; finalDurs[i] = dur;
+      for (var li = 1; li <= c.numLayers; li++) { var ll = c.layer(li); if (ll.outPoint >= oldDur - 0.01) ll.outPoint = dur + ov; }
     }
-    var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
     trans.push(tr);
-    // cut/dip keep the full fade-out; others end the outgoing content when the overlap begins
-    exitAll(c, tr === 'cut' || tr === 'dip' ? dur : dur - (TRLEN[tr] || 0));
+    // outgoing content stays visible through the transition window so the incoming layer crossfades over it
+    exitAll(c, dur + ov);
+    for (var mb = 1; mb <= c.numLayers; mb++) c.layer(mb).motionBlur = true;
     pre.push(c); starts.push(at); settle.push(entered); at += dur;
   }
   var main = app.project.items.addComp('Main', 1080, 1920, 1, at, 30);
+  main.motionBlur = true; main.motionBlurSamples = 8;
   var layers = [];
   for (var j = 0; j < pre.length; j++) {
     var st = starts[j], ov = TRLEN[trans[j]] || 0;
     var l = main.layers.add(pre[j]);
     l.startTime = st - ov; l.outPoint = st + finalDurs[j];
-    animate(l.transform.scale, st, st + finalDurs[j], [100,100], [103,103], 'calm');
+    // three camera moves cycled by scene so two shots in a row never move the same way
+    var cam = j % 3;
+    if (cam === 0) {
+      animate(l.transform.scale, l.startTime, l.outPoint, [100,100], [106,106], 'calm');
+    } else if (cam === 1) {
+      animate(l.transform.scale, l.startTime, l.outPoint, [106,106], [100,100], 'calm');
+    } else {
+      animate(l.transform.scale, l.startTime, l.outPoint, [106,106], [110,110], 'calm');
+      animate(l.transform.position, l.startTime, l.outPoint, [540,960], [560,944], 'calm');
+    }
     layers.push(l);
   }
   for (var k = 1; k < layers.length; k++) {
@@ -323,20 +418,30 @@ const MAIN = String.raw`
       dip.startTime = cut - half; dip.outPoint = cut + half;
       animate(dip.transform.opacity, cut - half, cut, 0, 100, 'smooth');
       animate(dip.transform.opacity, cut, cut + half, 100, 0, 'smooth');
+    } else if (typeof TRANSITIONS !== 'undefined' && TRANSITIONS.apply) {
+      TRANSITIONS.apply(main, THEME, t, layers[k - 1], layers[k], {start: cut - o, dur: o, index: k});
     }
   }
+  for (var mb2 = 1; mb2 <= main.numLayers; mb2++) main.layer(mb2).motionBlur = true;
   writeLn('ECM ' + JSON.stringify({settle:settle, durs:finalDurs}));
 })();
 `;
+
+const readLib = (rel) => { try { return read(rel); } catch { return ""; } };
 
 export function buildScript(spec, theme, durs) {
   return [
     `var SPEC = ${json(spec)};`,
     `var THEME = ${json(theme)};`,
     `var DURS = ${json(durs)};`,
-    read("../lib/core.jsx"),
-    read("../lib/scenes.jsx"),
-    read("../lib/fx.jsx"),
+    readLib("../lib/core.jsx"),
+    readLib("../lib/fx.jsx"),
+    readLib("../lib/motion.jsx"),
+    readLib("../lib/elements.jsx"),
+    readLib("../lib/atmosphere.jsx"),
+    readLib("../lib/transitions.jsx"),
+    readLib("../lib/scenes.jsx"),
+    readLib("../lib/scenes-extra.jsx"),
     MAIN,
   ].join("\n");
 }
@@ -345,7 +450,6 @@ export const SLIDE_SIZES = { "3:4": [1080, 1440], "4:5": [1080, 1350], "1:1": [1
 const SLIDES_MAIN = String.raw`
 (function () {
   var W = SIZE[0], H = SIZE[1];
-  assertFonts(THEME);
   var pre = [], at = 0;
   for (var i = 0; i < SPEC.slides.length; i++) {
     var c = app.project.items.addComp('P' + (i + 1), W, H, 1, 3, 30);
@@ -372,10 +476,93 @@ export function buildSlidesScript(deck, tpl, theme, size) {
   ].join("\n");
 }
 
+export function suggestThemes(spec, themes) {
+  const types = new Set((spec?.scenes || []).map((s) => s?.type));
+  const has = (...names) => names.some((n) => types.has(n));
+  const picks = [];
+  const push = (id) => { if (themes[id] && !picks.includes(id)) picks.push(id); };
+  if (has("stat", "bars", "donut", "counter", "dotgrid", "dial", "timeline")) {
+    push("infopop"); push("edukasi"); push("reel"); push("kinetik");
+  } else if (has("quote")) {
+    push("pitch"); push("tenang"); push("editorial-spread"); push("manuscript-page");
+  } else if (has("kinetic")) {
+    push("kinetik"); push("reel"); push("infopop"); push("cinematic");
+  } else if (has("cards", "steps", "compare")) {
+    push("edukasi"); push("infopop"); push("chapter-cards"); push("minimal-geometry");
+  } else {
+    push("reel"); push("pitch"); push("infopop"); push("tenang");
+  }
+  for (const id of Object.keys(themes)) { if (picks.length >= 4) break; push(id); }
+  return picks.slice(0, 4);
+}
+
+function fonts() {
+  const dir = resolve(dirname(new URL(import.meta.url).pathname), "../assets/fonts");
+  const manifest = JSON.parse(readFileSync(join(dir, "fonts.json"), "utf8"));
+  if (process.argv.includes("--list")) {
+    const byCat = {};
+    for (const [ps, f] of Object.entries(manifest)) (byCat[f.category] ||= []).push(`${ps}  ${f.family} ${f.style}`);
+    for (const cat of Object.keys(byCat).sort()) {
+      console.log(`\n${cat}`);
+      for (const line of byCat[cat].sort()) console.log("  " + line);
+    }
+    return 0;
+  }
+  if (process.argv.includes("--check")) {
+    const themes = loadThemes();
+    const list = engineFonts();
+    if (!list) { console.error("effectcraft-cli unavailable; cannot check installed fonts"); return 1; }
+    const have = new Set();
+    for (const f of list.families) for (const s of f.styles) have.add(`${f.family}|${s}`);
+    let bad = 0;
+    for (const [id, t] of Object.entries(themes)) {
+      const missing = [];
+      for (const [k, ps] of Object.entries(t.fonts || {})) {
+        const m = manifest[ps];
+        if (!m) { missing.push(`${k}=${ps} (not bundled)`); continue; }
+        const fam = m.family.split(",")[0].trim(), style = m.style.split(",")[0].trim();
+        if (!have.has(`${fam}|${style}`)) missing.push(`${k}=${ps} (${fam} ${style})`);
+      }
+      if (missing.length) { bad++; console.log(`${id}: ${missing.join(", ")}`); }
+    }
+    if (bad) { console.error(`${bad} themes reference fonts that are not installed — run: node bin/ecm.mjs fonts --install`); return 1; }
+    console.log(`all ${Object.keys(themes).length} themes use installed fonts`);
+    return 0;
+  }
+  if (process.argv.includes("--install")) {
+    const dest = process.platform === "darwin" ? join(homedir(), "Library/Fonts") : join(homedir(), ".local/share/fonts");
+    mkdirSync(dest, { recursive: true });
+    let n = 0;
+    for (const f of Object.values(manifest)) {
+      const src = join(dir, f.file.replace(/^assets\/fonts\//, ""));
+      const out = join(dest, basename(src));
+      if (!existsSync(out)) { copyFileSync(src, out); n++; }
+    }
+    spawnSync("fc-cache", ["-f"], { stdio: "ignore" });
+    console.log(`${n} installed to ${dest} (${Object.keys(manifest).length} bundled)`);
+    return 0;
+  }
+  console.log(`${Object.keys(manifest).length} bundled fonts in ${dir}`);
+  console.log("usage: ecm.mjs fonts [--list|--check|--install]");
+  return 0;
+}
+
 function themes() {
   const list = loadThemes();
   if (process.argv.includes("--json")) {
     console.log(JSON.stringify(list, null, 2));
+    return 0;
+  }
+  if (process.argv.includes("--suggest")) {
+    const i = process.argv.indexOf("--suggest");
+    const arg = process.argv[i + 1];
+    const spec = arg && !arg.startsWith("--") ? readSpec(arg) : undefined;
+    const picks = suggestThemes(spec, list);
+    picks.forEach((id, n) => {
+      const t = list[id], m = t.motion || {};
+      console.log(`${n + 1}. ${id}  ${t.label}  ${m.energy || "calm"}/${m.transition || "fade"}  ${(t.motifs || []).join(",")}`);
+    });
+    console.log("5. type your own theme id (node ecm.mjs themes lists all 70)");
     return 0;
   }
   for (const id of Object.keys(list).sort()) {
@@ -395,6 +582,7 @@ function slides(file, outArg) {
   if (deck.handle !== undefined) tpl.handle = deck.handle;
   const themeId = deck.theme ?? tpl.style;
   const theme = resolveTheme(loadThemes()[themeId], { template: deck.template }, templates);
+  try { checkFonts(theme); } catch (err) { console.error(err.message); return 1; }
   const size = SLIDE_SIZES[tpl.size] || [1080, 1440];
   const dir = dirname(file), base = basename(file, extname(file));
   const project = join(dir, base + ".ecproj");
@@ -403,6 +591,7 @@ function slides(file, outArg) {
   const tmp = join(mkdtempSync(join(tmpdir(), "ecm-")), base + ".slides.jsx");
   try {
     writeFileSync(tmp, buildSlidesScript(deck, tpl, theme, size));
+    console.log(`engine  effectcraft-cli script ${tmp} --empty --save-as ${project}`);
     const built = spawnSync("effectcraft-cli", ["script", tmp, "--empty", "--save-as", project], { encoding: "utf8" });
     if (built.status !== 0) {
       const lines = (built.stderr || built.stdout || "").split(/\r?\n/).filter((l) => /:\d+:\d+: /.test(l));
@@ -563,6 +752,35 @@ export function lint(spec, theme, durs) {
   if (dataScenes >= 3 && !scenes.some((s) => ["kinetic", "steps", "quote"].includes(s?.type)))
     add("C10", "spec", `${dataScenes} data scenes: numbers without a line of meaning`, `add a kinetic, steps, or quote scene that says what the numbers mean`);
 
+  // C11 same type and layout back to back
+  for (let i = 1; i < scenes.length; i++) {
+    const a = scenes[i - 1], b = scenes[i];
+    if (a?.type === b?.type && (a.layout || "default") === (b.layout || "default"))
+      add("C11", at(i, b.type), `same type and layout as scene ${i}`, `change "layout" on one of them (${(LAYOUTS[b.type] || []).join("|")})`);
+  }
+
+  // C12 transition monotony
+  const trs = scenes.slice(1).map((s) => s.transition || spec.transition || "cut");
+  if (trs.length >= 3 && new Set(trs).size === 1 && trs[0] !== "cut")
+    add("C12", "spec", `every scene uses "${trs[0]}"`, `vary transitions: ${TRANSITIONS.filter((t) => t !== "cut").join("|")}`);
+
+  // C13 flat look
+  const hasAtmo = scenes.some((s) => s.atmosphere) || (theme?.motion?.atmosphere && theme.motion.atmosphere !== "none") || (theme?.fx || []).length || (spec.fx || []).length;
+  if (!hasAtmo) add("C13", "spec", "no atmosphere or fx: flat background", `add "atmosphere":"glow" or an fx preset`);
+
+  // C14 long lines in the new types
+  scenes.forEach((s, i) => {
+    const where = at(i, s?.type);
+    if (s?.type === "cards" && Array.isArray(s.cards)) s.cards.forEach((c, j) => { if (wordsOf(c.text) > 6) add("C14", where, `card ${j + 1} is ${wordsOf(c.text)} words`, `trim cards[${j}].text to 6 words or fewer`); });
+    if (s?.type === "timeline" && Array.isArray(s.events)) s.events.forEach((ev, j) => { if (wordsOf(ev.label) > 5) add("C14", where, `event ${j + 1} is ${wordsOf(ev.label)} words`, `trim events[${j}].label to 5 words or fewer`); });
+    if (s?.type === "zoom" && Array.isArray(s.levels)) s.levels.forEach((l, j) => { if (wordsOf(l.label) > 4) add("C14", where, `level ${j + 1} is ${wordsOf(l.label)} words`, `trim levels[${j}].label to 4 words or fewer`); });
+  });
+
+  // C15 layout variety
+  const layouts = scenes.map((s) => `${s.type}:${s.layout || "default"}`);
+  const dup = new Set(layouts.filter((x, i) => layouts.indexOf(x) !== i));
+  if (dup.size >= 2) add("C15", "spec", `${dup.size} layouts repeat`, `vary "layout" across scenes`);
+
   return out;
 }
 
@@ -690,6 +908,7 @@ function render(file) {
     if (res.code !== 0) return res.code;
     const spec = res.spec, { project } = paths(file), out = resolve(dirname(file), spec.out || `${basename(file, extname(file))}.mp4`);
     mkdirSync(dirname(out), {recursive:true});
+    console.log(`engine  effectcraft-cli render --project ${project} --comp Main --out ${out} --format h264`);
     const built = spawnSync("effectcraft-cli", ["render", "--project", project, "--comp", "Main", "--out", out, "--format", "h264"], { encoding: "utf8" });
     if (built.status !== 0) {
       const lines = (built.stderr || "").split(/\r?\n/).filter((line) => line.trim());
@@ -713,6 +932,30 @@ function render(file) {
   }
 }
 
+let FONT_LIST;
+function engineFonts() {
+  if (FONT_LIST !== undefined) return FONT_LIST;
+  const r = spawnSync("effectcraft-cli", ["exec", "text.fonts", "--json"], { encoding: "utf8" });
+  if (r.status !== 0) return (FONT_LIST = null);
+  try { FONT_LIST = JSON.parse(r.stdout); } catch { FONT_LIST = null; }
+  return FONT_LIST;
+}
+function checkFonts(theme) {
+  const list = engineFonts();
+  if (!list) return;
+  const manifest = JSON.parse(readFileSync(new URL("../assets/fonts/fonts.json", import.meta.url), "utf8"));
+  const have = new Set();
+  for (const f of list.families) for (const s of f.styles) have.add(`${f.family}|${s}`);
+  const missing = [];
+  for (const [k, ps] of Object.entries(theme.fonts)) {
+    const m = manifest[ps];
+    if (!m) { missing.push(`${k}=${ps} (not bundled)`); continue; }
+    const fam = m.family.split(",")[0].trim(), style = m.style.split(",")[0].trim();
+    if (!have.has(`${fam}|${style}`)) missing.push(`${k}=${ps} (${fam} ${style})`);
+  }
+  if (missing.length) throw new Error(`fonts not installed: ${missing.join(", ")} — run: node bin/ecm.mjs fonts --install`);
+}
+
 function preview(file) {
   rmSync(paths(file).sheet, {force:true});
   const spec = readSpec(file);
@@ -720,11 +963,13 @@ function preview(file) {
   const themes = loadThemes(), templates = loadTemplates(), errors = validateSpec(spec, themes, dirname(file));
   if (errors.length) { for (const m of errors) console.error(m); return {code:1}; }
   const theme = resolveTheme(themes[spec.theme], spec, templates), durs = sceneDurations(spec, theme);
+  try { checkFonts(theme); } catch (err) { console.error(err.message); return {code:1}; }
   const { project, sheet } = paths(file);
   const base = basename(file, extname(file));
   const tmp = join(mkdtempSync(join(tmpdir(), 'ecm-')), base + '.build.jsx');
   try {
     writeFileSync(tmp, buildScript(spec, theme, durs));
+    console.log(`engine  effectcraft-cli script ${tmp} --empty --save-as ${project}`);
     const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
     if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : ((built.stderr || built.stdout || '').trim() || built.error?.message || 'effectcraft-cli failed to start'); console.error(msg); return {code:1}; }
     const line = `${built.stdout || ''}
@@ -733,7 +978,9 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
     const meta = JSON.parse(line.slice(4)), starts = [], frames = [], t = meta.settle, ds = meta.durs; let at = 0;
     for (let i = 0; i < ds.length; i++) { starts.push(at); frames.push(join(dirname(tmp), `${i + 1}_${spec.scenes[i].type}.png`)); at += ds[i]; }
     for (let i = 0; i < frames.length; i++) {
-      const time = starts[i] + Math.min(t[i] + 0.25, ds[i] - 0.35), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
+      const ov = TRANSITION_LEN[spec.scenes[i].transition || spec.transition || 'cut'] || 0;
+      const pre = Math.max(ov + 0.05, Math.min(t[i] + 0.25, ds[i] - ov - 0.1));
+      const time = starts[i] - ov + Math.max(0.05, pre), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
       if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim() || r.error?.message || 'effectcraft-cli failed to start'); return {code:1}; }
       const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
       const deviation = Number((check.stdout || '').trim());
@@ -773,6 +1020,7 @@ if (isMain()) {
   else if (cmd === "preview" && arg) process.exitCode = preview(arg).code;
   else if (cmd === "render" && arg) process.exitCode = render(arg);
   else if (cmd === "themes") process.exitCode = themes();
+  else if (cmd === "fonts") process.exitCode = fonts();
   else if (cmd === "slides" && arg) {
     let outArg;
     const oi = process.argv.indexOf("--out");
