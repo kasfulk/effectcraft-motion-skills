@@ -134,6 +134,35 @@ function trZoom(comp, theme, a, b, o) {
   return end;
 }
 
+// Whip pan: both scenes travel a full frame width in the same direction, with a horizontal
+// directional blur that exists only while they move. Without the blur the pan reads as a slide.
+function trWhip(comp, theme, a, b, o) {
+  o = o || {};
+  var t0 = o.start, dur = o.dur || 0.55, dir = o.dir || (theme.align === 'left' ? -1 : 1);
+  // travel must equal the comp width: the two precomps are 1080 wide, so 1080 of offset puts
+  // a's right edge exactly on b's left edge. Any larger number opens a strip of background
+  // between them for the whole move.
+  var end = t0 + dur, travel = 1080, blurLen = 45;
+  var ae = a.property('Effects').addProperty('Directional Blur');
+  ae.property('Direction').setValue(90);
+  var be = b.property('Effects').addProperty('Directional Blur');
+  be.property('Direction').setValue(90);
+  // the blur peaks with the speed and returns to zero, so the incoming frame lands sharp
+  animate(ae.property('Blur Length'), t0, end, blurLen, 0, 'smooth');
+  animate(be.property('Blur Length'), t0, end, blurLen, 0, 'smooth');
+  var ap = a.transform.position, bp = b.transform.position;
+  ap.setValueAtTime(t0, [540, 960]);
+  animate(ap, t0, end, [540, 960], [540 - dir * travel, 960], 'smooth');
+  bp.setValueAtTime(t0, [540 + dir * travel, 960]);
+  animate(bp, t0, end, [540 + dir * travel, 960], [540, 960], 'smooth');
+  // both stay opaque: two half-transparent frames would show the comp background between them
+  a.transform.opacity.setValueAtTime(t0, 100);
+  a.transform.opacity.setValueAtTime(end - 0.04, 100);
+  a.transform.opacity.setValueAtTime(end, 0);
+  b.transform.opacity.setValueAtTime(t0, 100);
+  return end;
+}
+
 function trGlitch(comp, theme, a, b, o) {
   o = o || {};
   var t0 = o.start, dur = o.dur || 0.7, strength = o.strength || 1;
@@ -240,6 +269,7 @@ var TRANSITIONS = {
   pageTurn: trPageTurn,
   zoom: trZoom,
   glitch: trGlitch,
+  whip: trWhip,
   dipSeed: trDipSeed,
   colorShift: trColorShift,
   apply: function (comp, theme, name, a, b, o) {

@@ -47,7 +47,7 @@ for (const [type, list] of Object.entries(layouts)) for (const layout of list) c
 for (const type of Object.keys(payload)) if (!layouts[type]) cases.push({ type, layout: "(default)", scene: { type, ...payload[type] } });
 
 // Transitions live in the Main comp, so each one needs a two-scene spec to be exercised at all.
-const transitions = ["cut", "fade", "wipe", "slide", "dip", "fold", "maskWipe", "pageTurn", "zoom", "glitch", "dipSeed", "colorShift"];
+const transitions = ["cut", "fade", "wipe", "slide", "dip", "whip", "fold", "maskWipe", "pageTurn", "zoom", "glitch", "dipSeed", "colorShift"];
 for (const transition of transitions) cases.push({ type: "transition", layout: transition, scenes: [{ type: "hook", text: "Sebelum" }, { type: "outro", text: "Sesudah", transition }] });
 
 const dir = mkdtempSync(join(tmpdir(), "ecm-smoke-"));

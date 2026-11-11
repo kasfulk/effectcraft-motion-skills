@@ -704,3 +704,36 @@ pageTurn@35.37 glitch@40.37 dipSeed@43.75 colorShift@46.77`).
 | All 11 transition types composite | 15/15 frames show scene content, no blank or black frame |
 | Smoke already builds each transition | `node scripts/smoke-layouts.mjs` → 50/50 |
 | Encoded video unaffected | boundary scan on the new `all-scenes.mp4` → no near-black at 9 cuts |
+
+## Verification 9 - whip pan transition (2026-11-11 12:40)
+
+`trWhip` in `lib/transitions.jsx`: both precomps slide one full frame width in the same
+direction while a `Directional Blur` (direction 90, length 45) keys up and back to zero, so
+both the leaving and the arriving frame land sharp.
+
+| Check | Command | Result |
+|---|---|---|
+| Registration | `grep -c whip` across bin/ecm.mjs, lib/transitions.jsx, reference/{scenes,themes}.md, SKILL.md, scripts/smoke-layouts.mjs | 10 sites |
+| Unit tests | `node --test test/ecm.test.mjs` | 46/46 |
+| Layout smoke | `node scripts/smoke-layouts.mjs` | 51/51 (whip case added) |
+| Spec check | `node bin/ecm.mjs check` x3 examples | exit 0 each |
+
+### Geometry bug found and fixed before shipping
+First cut used `travel = 1300` (the reference's number, for a different comp size). The two
+precomps are 1080 wide, so with both layers carrying the same delta the gap between a's right
+edge and b's left edge was `1300 - 1080 = 220 px` at **every** instant of the move - a strip of
+comp background visible for the whole transition. Travel must equal the comp width:
+
+a_x(p) = 540 - 1080p, right edge = 1080 - 1080p
+b_x(p) = 1620 - 1080p, left edge  = 1080 - 1080p   -> always equal, no gap.
+
+### Measured on the rendered frames
+Column means (0-255, ten 108 px columns) at the transition mid-point:
+
+| time | columns |
+|---|---|
+| 5.80 (start) | 32 36 46 44 47 44 44 37 34 28 - outgoing scene, heavily blurred, full frame |
+| 6.08 (mid) | 33 29 172 211 212 214 214 214 216 218 - outgoing occupies the left 216 px, incoming covers to the right edge, no background column anywhere |
+| 6.30 (landed) | 211 211 213 214 213 215 217 218 221 219 - incoming scene settled |
+
+The outgoing `72%` is visibly directionally smeared at 5.80 and sharp again at the start.

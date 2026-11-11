@@ -68,7 +68,7 @@ Carousels (deck specs): same loop — write the deck (set `"handle"` to the user
 | zoom | `levels` `{label,kind,n}` (+`speed`,`holdAt`) | zoom-out from dot to grid to rings |
 | custom | `jsx` | anything else, via core helpers |
 
-Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emphasis`, `transition` (`cut` default, `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift`). Spec level: `transition` default, `audio` `{bed, bedGain, sfx:[{at|scene, name, gain}]}` — sound is sparse, one sfx per 3–5 s. Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md).
+Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emphasis`, `transition` (`cut` default, `fade`, `wipe`, `slide`, `dip`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift`). Spec level: `transition` default, `audio` `{bed, bedGain, sfx:[{at|scene, name, gain}]}` — sound is sparse, one sfx per 3–5 s. Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md).
 
 **Effects:** `"fx":["grid","rgbIn"]` at spec or scene level, ≤ 1 each. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. See [reference/fx.md](reference/fx.md).
 

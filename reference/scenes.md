@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | `theme` | yes | string | Must name a key in `themes.json` | Unknown values produce `theme: unknown ...`. |
 | `scenes` | yes | array | Non-empty array | Contains scene objects. |
-| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Default entrance transition for every scene after the first. Unknown values error. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Default entrance transition for every scene after the first. Unknown values error. |
 | `out` | no | string | Must be a `.mp4` path | Resolved relative to the spec file. Without it, output uses the spec basename plus `.mp4`. |
 
 ## Shared scene fields
@@ -22,7 +22,7 @@
 | `elements` | no | string array | Names from `flash`, `rays`, `fog`, `particles`, `cracks`, `lightning`, `fire`, `water` | Decorative elements layered over the scene. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
 | `layout` | no | string | Per type, see below | Overrides the theme's `layouts[type]`. Unknown values error and list the valid ones. |
-| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
+| `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
 
 Valid `layout` values, and the default when neither the scene nor the theme sets one:
 
@@ -241,6 +241,7 @@ By default scenes cut hard. A spec-level `transition` sets the default entrance 
 | `wipe` | 0.4 s | Directional `Linear Wipe` of the incoming scene; angle follows `theme.align` (left: 0°, center: 90°). |
 | `slide` | 0.45 s | Incoming scene slides in — from the right on `left` themes, from the bottom on `center` themes. |
 | `dip` | 0.4 s | Dip through a solid of `theme.colors.ink` across the cut. |
+| `whip` | 0.55 s | Whip pan: both scenes slide a full frame width with a horizontal directional blur that exists only while they move. |
 | `fold` | 0.9 s | Fold the outgoing scene away like a panel. |
 | `maskWipe` | 0.9 s | Mask-based wipe with a soft edge. |
 | `pageTurn` | 1.0 s | Page-turn reveal. |

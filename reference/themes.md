@@ -21,7 +21,7 @@ Each theme now includes a `motion` object that defines visual transition charact
 |-------|------|--------|-------------|
 | `energy` | string | `calm`, `snap`, `float` | Overall motion energy and intensity |
 | `stagger` | number | `0.12` - `0.35` | Delay between element animations |
-| `transition` | string | `fade`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Main transition effect |
+| `transition` | string | `fade`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Main transition effect |
 | `atmosphere` | string | `none`, `glow`, `grain`, `full` | Environmental treatment: `glow` = accent halo, `grain` = film noise, `full` = both. Every mode except `none` also gets the vignette. A scene's own `atmosphere` overrides the theme's. |
 
 ### Layouts Object
