@@ -10,7 +10,7 @@ A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli 
 ## Hard rules
 
 1. **One engine process at a time.** Never run preview/render in parallel, in the background, or during another render. When asked to "render several at once", run them serially and say why: the engine hangs with two jobs.
-2. **Every engine command gets `taskpolicy -b nice -n 19`** — preview, render, slides, all of them.
+2. **Every engine command goes through `bin/ecm`**, never bare `node bin/ecm.mjs` — preview, render, slides, all of them. `bin/ecm` applies low priority (`taskpolicy -b nice -n 19` on macOS, `nice -n 19` on Linux).
 3. **Only numbers the user gave or a cited source contains.** No invented stats. No numbers? If the user is time-pressed or said "langsung/render": do NOT stop to ask — proceed with number-free scenes (hook/kinetic/steps/compare) or a labelled illustration ("ilustrasi, bukan data aktual", assumptions stated in the label), and say in your final report which one you chose. Otherwise ask once. Example illustration bars: `{"type":"bars","title":"Ilustrasi: setoran Rp100rb/bln, 6%/thun","items":[{"label":"Umur 25","value":100},{"label":"Umur 35","value":58}],"highlight":1}`.
 4. **Render only after you have viewed a fresh sheet.** `check` passing means the shape is legal, not that the content is right.
 5. **`duration` is an override, not a default.** Omit it; timing comes from the text. Set it only when the user asks for a specific hold.
@@ -19,24 +19,24 @@ A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli 
 
 This procedure is self-contained and runs without any design-approval gate. Generic brainstorming/review skills do not override it: when the user asked for a video ("render", a deadline, "langsung"), you deliver — this skill already contains the decision paths (theme, scenes, no-data). Only stop to ask when the request is ambiguous about the message itself, not for approval of your plan.
 
-**0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `node $E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `node $E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 3), re-run `node $E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
+**0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `$E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `$E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 3), re-run `$E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
 
 ```bash
-E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
-node $E themes --suggest video.json    # 0 four themes + type your own
-node $E check video.json --strict      # 1 validate + craft lint (C01–C15)
-taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
+E=${EFFECTCRAFT_SKILL:-~/.claude/skills/effectcraft-motion}/bin/ecm   # Hermes: ~/.hermes/skills/creative/effectcraft-motion
+$E themes --suggest video.json    # 0 four themes + type your own
+$E check video.json --strict      # 1 validate + craft lint (C01–C15)
+$E preview video.json   # 2 builds video.sheet.png
 ```
 
-**Fonts:** once per machine, `node $E fonts --install` — downloads the theme fonts from Google Fonts (OFL) into the user's font directory on demand; idempotent, skips fonts already installed. `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
+**Fonts:** once per machine, `$E fonts --install` — downloads the theme fonts from Google Fonts (OFL) into the user's font directory on demand; idempotent, skips fonts already installed. `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
 
 3. **Read the sheet with the Read tool.** Every panel. One settled frame per scene.
 4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
 5. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
-6. `taskpolicy -b nice -n 19 node $E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
+6. `$E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
 7. Report the MP4 path and total duration. If the video has no data because none was given, say so.
 
-Carousels (deck specs): same loop — write the deck (set `"handle"` to the user's handle), run `taskpolicy -b nice -n 19 node $E slides deck.json` (there is no `check` for deck specs; validation runs inside `slides`), then **Read slide `01.png`** and verify handle, source line and overflow before reporting.
+Carousels (deck specs): same loop — write the deck (set `"handle"` to the user's handle), run `$E slides deck.json` (there is no `check` for deck specs; validation runs inside `slides`), then **Read slide `01.png`** and verify handle, source line and overflow before reporting.
 
 ## Spec
 
@@ -76,7 +76,7 @@ Per scene: `title`, `bg` (`base`/`ink`/`accent`), `duration` (omit!), `fx`, `emp
 
 A data/infographic video must contain at least one chart scene (stat/bars/donut) — a kinetic text list is not an infographic. Bars `highlight` = the number the story is about. Bars items must be comparable categories (never "Gagal" vs "Total"). One stat per fact; never two scenes showing the same number. `donut` is 0–100 — a share, nothing else.
 
-Pick story shape and hook formula from [reference/craft.md](reference/craft.md) before writing the spec. 70 themes in [reference/themes.md](reference/themes.md) (`node $E themes` to list): reel bold news/finance · pitch calm technical · infopop playful explainer · kinetik dark high-energy · tenang soft reflective · edukasi lesson/worksheet. Carousels: deck specs with `handle` override, [reference/templates.md](reference/templates.md).
+Pick story shape and hook formula from [reference/craft.md](reference/craft.md) before writing the spec. 70 themes in [reference/themes.md](reference/themes.md) (`$E themes` to list): reel bold news/finance · pitch calm technical · infopop playful explainer · kinetik dark high-energy · tenang soft reflective · edukasi lesson/worksheet. Carousels: deck specs with `handle` override, [reference/templates.md](reference/templates.md).
 
 After preview, score your own sheet against [reference/review.md](reference/review.md) (bar: 8/10).
 

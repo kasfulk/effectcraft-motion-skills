@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync as existsSyncBin } from "node:fs";
+
+// ffmpeg lives on PATH on Linux; Homebrew paths are the macOS fallback.
+const onPath = (name) => (process.env.PATH || "").split(":").some((d) => d && existsSyncBin(`${d}/${name}`));
+const FFMPEG_BIN = ["ffmpeg", "/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"]
+  .find((c) => c.includes("/") ? existsSyncBin(c) : onPath(c));
+const FFPROBE_BIN = ["ffprobe", "/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffprobe", "/usr/bin/ffprobe"]
+  .find((c) => c.includes("/") ? existsSyncBin(c) : onPath(c));
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -432,17 +440,17 @@ test("validateSpec: audio errors", () => {
   assert.ok(validateSpec(spec({ sfx: thirteen }), T, SPEC_DIR).includes("audio.sfx: at most 12 entries"));
 });
 
-test("audio: real ffmpeg mux on a generated black video", { skip: !existsSync("/opt/homebrew/bin/ffmpeg") }, () => {
+test("audio: real ffmpeg mux on a generated black video", { skip: !FFMPEG_BIN || !FFPROBE_BIN }, () => {
   const dir = mkdtempSync(join(tmpdir(), "ecm-"));
   try {
     const mp4 = join(dir, "black.mp4");
-    const gen = spawnSync("/opt/homebrew/bin/ffmpeg", ["-y", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:r=30", "-t", "3", "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], { encoding: "utf8" });
+    const gen = spawnSync(FFMPEG_BIN, ["-y", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:r=30", "-t", "3", "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], { encoding: "utf8" });
     assert.equal(gen.status, 0, gen.stderr?.slice(-500));
     const spec = aSpec({ bed: "rain", bedGain: -18, sfx: [{ at: 1.2, name: "keypress-001", gain: -10 }, { scene: 2, name: "thunder-1" }] });
   assert.ok(muxAudio(mp4, spec, SPEC_DIR, 3, STARTS));
-    const codec = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", mp4], { encoding: "utf8" });
+    const codec = spawnSync(FFPROBE_BIN, ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", mp4], { encoding: "utf8" });
     assert.equal(codec.stdout.trim(), "aac", codec.stderr);
-    const dur = spawnSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", mp4], { encoding: "utf8" });
+    const dur = spawnSync(FFPROBE_BIN, ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", mp4], { encoding: "utf8" });
     assert.ok(Math.abs(Number(dur.stdout) - 3) <= 0.1, dur.stdout);
     assert.ok(!existsSync(mp4.replace(/\.mp4$/, ".tmp.mp4")), "tmp file cleaned up");
   } finally { rmSync(dir, { recursive: true, force: true }); }

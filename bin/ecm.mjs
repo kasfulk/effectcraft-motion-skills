@@ -651,7 +651,9 @@ function fonts() {
       if (dl.status !== 0) { console.error(`${basename(f.file)}: download failed: ${(dl.stderr || "").toString().trim()}`); failed++; continue; }
       downloaded++;
     }
-    spawnSync("fc-cache", ["-f"], { stdio: "ignore" });
+    // fc-cache is fontconfig-only (Linux); macOS picks up ~/Library/Fonts on its own.
+    const fcCache = resolveBin("fc-cache", []);
+    if (fcCache !== "fc-cache") spawnSync(fcCache, ["-f"], { stdio: "ignore" });
     console.log(`downloaded ${downloaded} of ${Object.keys(manifest).length} fonts to ${dest} (${failed} failed)`);
     return failed ? 1 : 0;
   }
@@ -917,8 +919,19 @@ function check(file, strict) {
 }
 
 const SFX_EXTS = [".wav", ".m4a", ".mp3", ".ogg"];
-const FFMPEG = "/opt/homebrew/bin/ffmpeg";
-const FFPROBE = "/opt/homebrew/bin/ffprobe";
+// ponytail: resolve ffmpeg from PATH; Homebrew/MacPorts paths are last-resort fallbacks.
+// ponytail: upgrade to an explicit config flag only if someone needs a non-PATH binary.
+function resolveBin(name, fallbacks) {
+  const exts = process.platform === "win32" ? [".exe", ".cmd", ""] : [""];
+  const dirs = (process.env.PATH || "").split(process.platform === "win32" ? ";" : ":");
+  for (const d of dirs) for (const e of exts) {
+    const p = join(d, name + e);
+    if (d && existsSync(p)) return p;
+  }
+  return fallbacks.find((p) => existsSync(p)) || name;
+}
+const FFMPEG = resolveBin("ffmpeg", ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"]);
+const FFPROBE = resolveBin("ffprobe", ["/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffprobe", "/usr/bin/ffprobe"]);
 const AUDIO_EXT = /\.(wav|m4a|mp3|ogg)$/i;
 
 const sfxDir = () => new URL("../assets/sfx/", import.meta.url).pathname;
@@ -1101,7 +1114,11 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
       if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim() || check.error?.message || 'magick failed'}`); return {code:1}; }
       if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return {code:1}; }
     }
-    const montage = spawnSync('magick', ['montage', '-font', '/System/Library/Fonts/Helvetica.ttc', ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
+    // ponytail: sheet labels need any readable font; macOS path first, Linux fallback.
+    // ponytail: no -font at all if neither exists (labels fall back to magick default).
+    const labelFont = ['/System/Library/Fonts/Helvetica.ttc', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
+      .find((f) => existsSync(f));
+    const montage = spawnSync('magick', ['montage', ...(labelFont ? ['-font', labelFont] : []), ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
     if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim() || montage.error?.message || 'magick montage failed'); return {code:1}; }
     for (const f of frames) rmSync(f, {force:true});
     console.log(sheet);

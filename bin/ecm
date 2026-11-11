@@ -1,0 +1,10 @@
+#!/bin/sh
+# Portable launcher for ecm.mjs: same low-priority behaviour on macOS and Linux.
+# macOS: taskpolicy -b nice -n 19 (background QoS). Linux: nice -n 19.
+# Usage: bin/ecm <check|preview|render|themes|slides|new|fonts> ...
+set -e
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ "$(uname -s)" = "Darwin" ] && command -v taskpolicy >/dev/null 2>&1; then
+  exec taskpolicy -b nice -n 19 node "$DIR/ecm.mjs" "$@"
+fi
+exec nice -n 19 node "$DIR/ecm.mjs" "$@"

@@ -4,30 +4,46 @@ Skill untuk mengubah spec JSON menjadi video motion graphics 9:16 berbentuk MP4 
 
 ## Kebutuhan
 
-- `effectcraft-cli`
+- `effectcraft-cli` (di `PATH`)
 - Node.js ≥ 20
-- ImageMagick (`magick`)
-- `ffmpeg` dan `ffprobe`
+- ImageMagick 7 (`magick` di `PATH`)
+- `ffmpeg` dan `ffprobe` (di `PATH`; `/opt/homebrew/bin` dipakai sebagai fallback di macOS)
+
+Jalan di macOS dan Linux (Ubuntu/Debian). `bin/ecm` menangani bedanya: prioritas rendah
+lewat `taskpolicy -b nice -n 19` di macOS dan `nice -n 19` di Linux. Font dipasang ke
+`~/Library/Fonts` (macOS) atau `~/.local/share/fonts` + `fc-cache` (Linux).
+
+Pasang dependensi:
+
+```sh
+# macOS
+brew install node imagemagick ffmpeg
+# Ubuntu/Debian
+sudo apt install nodejs imagemagick ffmpeg fontconfig
+```
 
 Pasang skill secara lokal:
 
 ```sh
-ln -s "$PWD" ~/.claude/skills/effectcraft-motion
+ln -s "$PWD" ~/.claude/skills/effectcraft-motion   # macOS/Claude Code
+ln -s "$PWD" ~/.hermes/skills/creative/effectcraft-motion   # Hermes
 ```
 
 ## Mulai cepat
 
 ```sh
-node bin/ecm.mjs themes                    # daftar 70 theme
-node bin/ecm.mjs new reel spec.json         # spec starter untuk theme reel
-node bin/ecm.mjs slides deck.json --out deck-slides/   # render satu PNG per slide
-node bin/ecm.mjs check examples/hemat.json
-node bin/ecm.mjs fonts --check              # pastikan semua font terpasang; `fonts --install` mengunduh font yang belum ada dari Google Fonts
-taskpolicy -b nice -n 19 node bin/ecm.mjs preview examples/hemat.json
-taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
+bin/ecm themes                     # daftar 70 theme
+bin/ecm new reel spec.json         # spec starter untuk theme reel
+bin/ecm slides deck.json --out deck-slides/   # render satu PNG per slide
+bin/ecm check examples/hemat.json
+bin/ecm fonts --check              # pastikan semua font terpasang; `fonts --install` mengunduh font yang belum ada dari Google Fonts
+bin/ecm preview examples/hemat.json
+bin/ecm render examples/hemat.json
 ```
 
 `check` hanya memvalidasi dan menghitung durasi. `preview` membuat project serta contact sheet. `render` menulis MP4 di samping spec. Jalankan satu proses engine pada satu waktu.
+
+
 
 Referensi:
 
@@ -38,9 +54,10 @@ Referensi:
 - [Craft, story shapes and pacing](reference/craft.md)
 - [Sound: bed and sfx rules](reference/sound.md)
 - [Cold-reader review of the contact sheet](reference/review.md)
+- [Platform notes: macOS + Linux](PLATFORM-NOTES.md)
 
 Tes smoke lengkap memakai engine secara serial:
 
 ```sh
-taskpolicy -b nice -n 19 bash test/smoke.sh
+bash test/smoke.sh
 ```

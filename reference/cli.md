@@ -1,13 +1,13 @@
 # CLI reference
 
-`ecm.mjs` is a zero-dependency Node script. Run it from any working directory as `node bin/ecm.mjs <command> <spec>`.
+`ecm.mjs` is a zero-dependency Node script. Run it from any working directory as `bin/ecm <command> <spec>`.
 
 ## Commands
 
 ### `check`
 
 ```sh
-node bin/ecm.mjs check examples/hemat.json
+bin/ecm check examples/hemat.json
 ```
 
 Validates the JSON without starting EffectCraft. It prints estimated seconds per scene, such as `1  hook  2.67`, followed by `total  13.33`. Validation errors print to stderr and the command exits 1. Exact validation messages include:
@@ -45,7 +45,7 @@ WARN  C03 scenes[2] (bars): no highlight → add "highlight": 0 (largest value i
 Each line is `LEVEL  CODE scene: message → fix`. All findings are `WARN` (no `ERROR` levels exist yet). Warnings alone exit 0; with `--strict` any warning exits 2:
 
 ```sh
-node bin/ecm.mjs check spec.json --strict
+bin/ecm check spec.json --strict
 ```
 
 ### Craft lint
@@ -87,7 +87,7 @@ Rules C01–C10 as printed by `check` (see `examples/lint-bad.json`):
 ### `preview`
 
 ```sh
-node bin/ecm.mjs preview examples/hemat.json
+bin/ecm preview examples/hemat.json
 ```
 
 Validates, builds the EffectCraft project, renders one frame per scene, checks for blank frames, and writes a contact sheet next to the spec. It deletes the old sheet first, then prints the sheet path. If effectcraft-cli or magick cannot start, the spawn error is printed (e.g. `spawnSync effectcraft-cli ENOENT`). Exact pipeline errors include `missing ECM output`, `scene 1 (hook): blank check failed: ...`, and `scene 1 (hook): renders blank at 2.5s`. Engine errors arrive as `file:line:col: message`; `ecm.mjs` strips the location and prints the message. Examples from the smoke cases include:
@@ -104,7 +104,7 @@ The exact duration value depends on the returned settle time and is formatted as
 ### `render`
 
 ```sh
-node bin/ecm.mjs render examples/hemat.json
+bin/ecm render examples/hemat.json
 ```
 
 Takes the render lock, runs the preview build and checks, writes the MP4, then prints `total  <seconds>` and the MP4 path. If the lock exists, it prints:
@@ -122,7 +122,7 @@ If the spec has an `audio` block (see [scenes.md](scenes.md)), the silent MP4 is
 ### `new`
 
 ```sh
-node bin/ecm.mjs new reel spec.json
+bin/ecm new reel spec.json
 ```
 
 Writes a starter spec for the named theme. Creates a minimal spec with one `hook`, one `stat`, and one `outro` scene, then validates it. Prints the output path on success. The file is written to `out` or to `<theme>.json` in the current directory.
@@ -130,8 +130,8 @@ Writes a starter spec for the named theme. Creates a minimal spec with one `hook
 ### `themes`
 
 ```sh
-node bin/ecm.mjs themes
-node bin/ecm.mjs themes --json
+bin/ecm themes
+bin/ecm themes --json
 ```
 
 Prints one tab-separated line per theme: id, label, align, base, ink, accent, display font, motifs, fx. With `--json`, prints the whole `themes.json` object instead.
@@ -139,7 +139,7 @@ Prints one tab-separated line per theme: id, label, align, base, ink, accent, di
 ### `slides`
 
 ```sh
-node bin/ecm.mjs slides deck.json --out deck-slides/
+bin/ecm slides deck.json --out deck-slides/
 ```
 
 Renders one PNG per slide at the template's size. See [templates.md](templates.md) for deck spec shape and field descriptions.
@@ -147,9 +147,9 @@ Renders one PNG per slide at the template's size. See [templates.md](templates.m
 ### `fonts`
 
 ```sh
-node bin/ecm.mjs fonts --list
-node bin/ecm.mjs fonts --check
-node bin/ecm.mjs fonts --install
+bin/ecm fonts --list
+bin/ecm fonts --check
+bin/ecm fonts --install
 ```
 
 `--list` prints the families in the manifest (`assets/fonts/fonts.json`) grouped by category.
@@ -168,9 +168,9 @@ Themes and templates must name a manifest PostScript name (`Anton-Regular`,
 Run only one EffectCraft engine process at a time. Prefix runs with:
 
 ```sh
-taskpolicy -b nice -n 19 node bin/ecm.mjs check examples/hemat.json
-taskpolicy -b nice -n 19 node bin/ecm.mjs preview examples/hemat.json
-taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
+bin/ecm check examples/hemat.json
+bin/ecm preview examples/hemat.json
+bin/ecm render examples/hemat.json
 ```
 
 `preview` is not locked. Never run it while a render is in progress. Keep render and preview work sequential.
@@ -189,7 +189,7 @@ $C render-frame --project $F --comp Main --time 2.5 --max-side 480 --out frame.p
 $C script FILE.jsx --empty --save-as $F                    # run AE-style JSX
 ```
 
-The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Run `node bin/ecm.mjs fonts --install` to download any missing font from Google Fonts into `~/Library/Fonts` (Linux: `~/.local/share/fonts`); fonts already installed are skipped. `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
+The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Run `bin/ecm fonts --install` to download any missing font from Google Fonts into `~/Library/Fonts` (Linux: `~/.local/share/fonts`); fonts already installed are skipped. `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
 
 ## Pitfalls (verified)
 
@@ -199,7 +199,7 @@ The generated script uses PostScript font names from `assets/fonts/fonts.json` (
 - Scale values are vec3. The Scale matchName is `ADBE Scale`.
 - The text selector Units default is percent. `setValue(2)` switches it to index units.
 - Unknown fonts silently fall back to the engine default (Inter). `preview`/`render` check the theme's fonts against `effectcraft-cli exec text.fonts` before building, so a missing font fails fast instead of rendering in the wrong face.
-- The montage default label font is missing, so pass `-font /System/Library/Fonts/Helvetica.ttc`.
+- The montage default label font may be missing; `ecm.mjs` picks a label font itself (Helvetica on macOS, DejaVu Sans on Linux) and drops `-font` if neither exists.
 - `sourceRectAtTime` reports stroked shapes about 13 px wider per side.
 - A static opacity is overwritten by any later keyed animation that starts from a hard-coded value.
 - CLI errors appear as `file:line:col: message` on stderr.

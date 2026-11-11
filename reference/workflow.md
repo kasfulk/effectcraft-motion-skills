@@ -5,7 +5,7 @@ Ported from the reel-skill-chat chain (idea, script, storyboard, build, review, 
 Set once:
 
 ```bash
-E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
+E=~/.claude/skills/effectcraft-motion/bin/ecm
 ```
 
 ## The chain
@@ -25,9 +25,9 @@ E=~/.claude/skills/effectcraft-motion/bin/ecm.mjs
 
 ### 0. Theme
 
-Ask before anything else. Run `node $E themes --suggest <draft spec or nothing>` and show the 4 recommended themes as numbered options, each with its label and motion character (`energy/transition`), then a fifth option: "5. type your own theme id". The user may name any of the 70 from `node $E themes`.
+Ask before anything else. Run `$E themes --suggest <draft spec or nothing>` and show the 4 recommended themes as numbered options, each with its label and motion character (`energy/transition`), then a fifth option: "5. type your own theme id". The user may name any of the 70 from `$E themes`.
 
-Gate: the theme id is chosen and written into the spec. If the user is time-pressed or says "langsung", take option 1 and say which theme you used. After the beat sheet (step 3), re-run `node $E themes --suggest video.json` and confirm or update the pick.
+Gate: the theme id is chosen and written into the spec. If the user is time-pressed or says "langsung", take option 1 and say which theme you used. After the beat sheet (step 3), re-run `$E themes --suggest video.json` and confirm or update the pick.
 
 ### 1. Idea
 
@@ -70,12 +70,12 @@ Gate: the user sees the beat sheet and the message is still one sentence; for a 
 
 ### 4. Write the spec, check --strict
 
-Map the beat sheet to a spec JSON. Field reference: [scenes.md](scenes.md), sound: [sound.md](sound.md), themes: [themes.md](themes.md), effects: [fx.md](fx.md). Start from a template with `node $E new <theme>` only if you need a skeleton; writing the JSON by hand is the norm.
+Map the beat sheet to a spec JSON. Field reference: [scenes.md](scenes.md), sound: [sound.md](sound.md), themes: [themes.md](themes.md), effects: [fx.md](fx.md). Start from a template with `$E new <theme>` only if you need a skeleton; writing the JSON by hand is the norm.
 
 Run the spec checklist in [craft.md](craft.md), then:
 
 ```bash
-node $E check video.json --strict
+$E check video.json --strict
 ```
 
 Gate: `check --strict` exits 0. A failing check names the scene and the fix; apply the fix in the spec, re-run, until clean. `check` passing means the shape is legal, not that the content is right.
@@ -83,7 +83,7 @@ Gate: `check --strict` exits 0. A failing check names the scene and the fix; app
 ### 5. Preview, read every panel
 
 ```bash
-taskpolicy -b nice -n 19 node $E preview video.json
+$E preview video.json
 ```
 
 `preview` writes `<basename>.sheet.png` next to the spec: one settled frame per scene, frame at scene settle + 0.25 s. Read the whole sheet with the Read tool. Every panel. Not 2 or 3.
@@ -114,12 +114,12 @@ Gate: every lens 8 or more, or the user explicitly accepts a below-8 lens and na
 ### 8. Render
 
 ```bash
-taskpolicy -b nice -n 19 node $E render video.json
+$E render video.json
 ```
 
 `render` re-runs preview inside itself and writes the MP4 to `spec.out` or `<basename>.mp4` next to the spec; with an `audio` block it muxes bed + sfx. One engine job at a time, never parallel, never backgrounded.
 
-Carousels (deck specs): `taskpolicy -b nice -n 19 node $E slides deck.json` (add `--out <dir>` to change the output folder). There is no `check` for decks; validation runs inside `slides`. Read slide `01.png` and verify handle, source line and overflow before reporting.
+Carousels (deck specs): `$E slides deck.json` (add `--out <dir>` to change the output folder). There is no `check` for decks; validation runs inside `slides`. Read slide `01.png` and verify handle, source line and overflow before reporting.
 
 Gate: the command prints the MP4 path and `total <seconds>`, and for carousels the first slide PNG is read and clean.
 
