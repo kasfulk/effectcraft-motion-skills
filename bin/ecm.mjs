@@ -353,7 +353,8 @@ const MAIN = String.raw`
     {s0:[104,104], s1:[112,112], p0:[540,960], p1:[576,936]},  // push in, drift right
     {s0:[112,112], s1:[104,104], p0:[540,960], p1:[504,984]},  // pull out, drift left
     {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,912]},  // push in, crane up
-    {s0:[112,112], s1:[106,106], p0:[540,960], p1:[566,960]}   // pull out, drift right
+    {s0:[112,112], s1:[106,106], p0:[540,960], p1:[566,960]},  // pull out, drift right
+    {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,960], orbit:{radius:12}}  // orbit the centre
   ];
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0, seen = {};
   for (var i = 0; i < SPEC.scenes.length; i++) {
@@ -453,9 +454,22 @@ const MAIN = String.raw`
       var dv = 100 + 0.75 * (1 - Math.cos(2 * Math.PI * dk / period));
       ds.setValueAtTime(Math.min(d0 + dk, d1), [dv, dv]);
     }
-    // Land on 100 so a scene never hands a 1.5 % offset to the next one across a transition.
+    // Land on 100 so a scene never hands an offset to the next one across a transition.
     ds.setValueAtTime(d1, [100, 100]);
-    animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
+    if (CAM.orbit) {
+      // The world orbits the frame centre. This rides on position, the same property the pan
+      // uses, because anchorPoint shifts the layer in its own space and the camera scale then
+      // multiplies that shift - at 106 % a 12 px anchor offset exposed 7 px of comp background
+      // at the frame edge. Position is in comp space and is not multiplied.
+      var op = cam.transform.position, on = Math.max(12, Math.round((d1 - d0) * 12));
+      for (var oi = 0; oi <= on; oi++) {
+        var th = 2 * Math.PI * oi / on;
+        op.setValueAtTime(d0 + (d1 - d0) * oi / on, [540 + CAM.orbit.radius * Math.cos(th), 960 + CAM.orbit.radius * Math.sin(th)]);
+      }
+      op.setValueAtTime(d1, [540, 960]);
+    } else {
+      animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
+    }
     // A hard cut lands with weight: a short decaying shake, gone in 0.22 s. Soft transitions
     // already carry their own motion, so they get none.
     if (j > 0 && (trans[j] === 'cut' || trans[j] === 'dip')) {
@@ -470,6 +484,12 @@ const MAIN = String.raw`
     }
     var l = main.layers.add(pre[j]);
     l.parent = cam;
+    // The engine fits the precomp to exactly 100 % net coverage, so at scene start there is no
+    // slack at all and any camera offset exposes comp background - a 16 px shake blacked out
+    // all four edges. 8 % more buys 43 px, which covers the shake (16 px) and the orbit (12 px)
+    // together. SAFE starts 90 px in, so the extra zoom stays inside it.
+    var fit = l.transform.scale.value[0] * 1.08;
+    l.transform.scale.setValue([fit, fit]);
     l.startTime = st - ov; l.outPoint = st + finalDurs[j];
     layers.push(l);
   }

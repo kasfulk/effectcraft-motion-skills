@@ -1056,3 +1056,59 @@ and the two-null camera stack with shake and drift.
 |---|---|
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
+
+## Verification 23 - orbit move, and the camera had no slack at all (2026-11-11 18:10)
+
+Adding the reference's last camera move, `orbit`, exposed a defect that predated it.
+
+### The orbit
+`cam.position` sweeps a 12 px circle, 47 keys, returning to centre:
+
+```
+14.57 (552.0, 960.0)  15.47 (540.8, 972.0)  16.47 (528.0, 960.0)  17.47 (540.8, 948.1)  18.37 (540.0, 960.0)
+```
+
+### The defect it found
+The first orbit build blacked out the left 24 px. The cause was not the orbit:
+
+- The engine fits each scene precomp to **exactly 100 % net coverage** — `S5_outro` layer scale
+  `94.34 %` = `100/106`, cancelling the camera's `106 %`.
+- So at scene start there is **zero slack**, and any camera offset exposes comp background.
+- The 16 px shake added in Verification 20 therefore blacked out **all four edges** on every
+  cut scene: at 2.79 (shake peak) L/R/T/B were all `0/0` flat, against `15/2` at 3.10.
+
+Two wrong fixes were tried and measured before the real one:
+
+| Attempt | Result |
+|---|---|
+| orbit on `anchorPoint` | exposed 7 px — anchor shifts in layer space, then the camera scale multiplies it |
+| `camRoot` scale base 108 % | no effect: the engine refits the layer to `87.35 %` = `100/(108×1.06)`, eating the headroom |
+
+### The fix
+`bin/ecm.mjs` multiplies the fitted layer scale by `1.08` after `layers.add` — the last writer,
+so the engine's fit cannot cancel it. Net coverage becomes 108 % at scene start: 43 px of
+horizontal slack, 77 px vertical, against a 16 px shake and a 12 px orbit.
+
+`SAFE` starts 90 px in, so the extra zoom never crops content; the build's own safe-area check
+and the 51-case smoke suite both still pass.
+
+### Edge test after the fix (2 px strips, mean/std; `0/0` = flat background)
+
+| time | L | R | T | B |
+|---|---|---|---|---|
+| 2.79 shake peak | 15/1 | 15/1 | 15/1 | 14/1 |
+| 3.10 settled | 15/2 | 15/2 | 14/2 | 14/2 |
+| 14.70 orbit + shake | 184/66 | 212/8 | 208/2 | 194/2 |
+| 15.47 orbit | 184/66 | 184/66 | 209/2 | 195/3 |
+| 16.47 orbit | 184/67 | 183/67 | 210/2 | 195/3 |
+| 17.47 orbit | 184/68 | 184/68 | 211/2 | 195/3 |
+
+No flat-background edge anywhere. Scene 3 at 5.86/5.96 also reads `0/0`, but its frame centre
+is 29/20 against 229 at 6.20 — that is the `dip` transition covering the whole frame, not
+exposure, and `S3_bars` scale is static at 101.89 so the headroom was not overwritten.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
