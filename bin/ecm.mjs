@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync, copyFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSync, renameSync, existsSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -637,17 +637,25 @@ function fonts() {
   if (process.argv.includes("--install")) {
     const dest = process.platform === "darwin" ? join(homedir(), "Library/Fonts") : join(homedir(), ".local/share/fonts");
     mkdirSync(dest, { recursive: true });
-    let n = 0;
+    let downloaded = 0, failed = 0;
     for (const f of Object.values(manifest)) {
-      const src = join(dir, f.file.replace(/^assets\/fonts\//, ""));
-      const out = join(dest, basename(src));
-      if (!existsSync(out)) { copyFileSync(src, out); n++; }
+      const out = join(dest, basename(f.file));
+      if (existsSync(out)) continue;
+      const family = f.family.split(",")[0].trim();
+      const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}:wght@${f.weight}&display=swap`;
+      const css = spawnSync("curl", ["-fsSL", "-A", "Mozilla/4.0", cssUrl], { encoding: "utf8" });
+      if (css.status !== 0) { console.error(`${basename(f.file)}: css2 request failed for ${family}`); failed++; continue; }
+      const m = /url\((https:[^)]+\.ttf)\)/.exec(css.stdout || "");
+      if (!m) { console.error(`${basename(f.file)}: no ttf url from ${family}`); failed++; continue; }
+      const dl = spawnSync("curl", ["-fsSL", m[1], "-o", out]);
+      if (dl.status !== 0) { console.error(`${basename(f.file)}: download failed: ${(dl.stderr || "").toString().trim()}`); failed++; continue; }
+      downloaded++;
     }
     spawnSync("fc-cache", ["-f"], { stdio: "ignore" });
-    console.log(`${n} installed to ${dest} (${Object.keys(manifest).length} bundled)`);
-    return 0;
+    console.log(`downloaded ${downloaded} of ${Object.keys(manifest).length} fonts to ${dest} (${failed} failed)`);
+    return failed ? 1 : 0;
   }
-  console.log(`${Object.keys(manifest).length} bundled fonts in ${dir}`);
+  console.log(`${Object.keys(manifest).length} known fonts in ${dir} — run --install to download them`);
   console.log("usage: ecm.mjs fonts [--list|--check|--install]");
   return 0;
 }

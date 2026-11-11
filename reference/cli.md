@@ -152,12 +152,14 @@ node bin/ecm.mjs fonts --check
 node bin/ecm.mjs fonts --install
 ```
 
-`--list` prints the bundled families grouped by category. `--check` verifies that every theme
-and deck template names a font that is actually installed, and exits non-zero listing the
-missing ones. `--install` copies the bundled faces into the system font directory so the engine
-can resolve them.
+`--list` prints the families in the manifest (`assets/fonts/fonts.json`) grouped by category.
+`--check` verifies that every theme and deck template names a font that is actually installed,
+and exits non-zero listing the missing ones. `--install` downloads any font the manifest lists
+but the machine lacks — from the Google Fonts css2 API straight into the system font directory —
+so the engine can resolve it. Nothing is bundled in the repo; already-installed fonts are
+skipped.
 
-Themes and templates must name a bundled PostScript name (`Anton-Regular`,
+Themes and templates must name a manifest PostScript name (`Anton-Regular`,
 `PlayfairDisplay-Bold`), not a family name. A theme that names a system font such as
 `HelveticaNeue-Medium` fails `--check` and refuses to render.
 
@@ -187,7 +189,7 @@ $C render-frame --project $F --comp Main --time 2.5 --max-side 480 --out frame.p
 $C script FILE.jsx --empty --save-as $F                    # run AE-style JSX
 ```
 
-The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Install them once with `node bin/ecm.mjs fonts --install`; `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
+The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Run `node bin/ecm.mjs fonts --install` to download any missing font from Google Fonts into `~/Library/Fonts` (Linux: `~/.local/share/fonts`); fonts already installed are skipped. `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
 
 ## Pitfalls (verified)
 

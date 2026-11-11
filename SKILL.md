@@ -28,7 +28,7 @@ node $E check video.json --strict      # 1 validate + craft lint (C01–C15)
 taskpolicy -b nice -n 19 node $E preview video.json   # 2 builds video.sheet.png
 ```
 
-**Fonts:** once per machine, `node $E fonts --install` (bundled OFL fonts). `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
+**Fonts:** once per machine, `node $E fonts --install` — downloads the theme fonts from Google Fonts (OFL) into the user's font directory on demand; idempotent, skips fonts already installed. `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
 
 3. **Read the sheet with the Read tool.** Every panel. One settled frame per scene.
 4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.

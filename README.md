@@ -22,7 +22,7 @@ node bin/ecm.mjs themes                    # daftar 70 theme
 node bin/ecm.mjs new reel spec.json         # spec starter untuk theme reel
 node bin/ecm.mjs slides deck.json --out deck-slides/   # render satu PNG per slide
 node bin/ecm.mjs check examples/hemat.json
-node bin/ecm.mjs fonts --check              # pastikan semua theme pakai font yang terpasang
+node bin/ecm.mjs fonts --check              # pastikan semua font terpasang; `fonts --install` mengunduh font yang belum ada dari Google Fonts
 taskpolicy -b nice -n 19 node bin/ecm.mjs preview examples/hemat.json
 taskpolicy -b nice -n 19 node bin/ecm.mjs render examples/hemat.json
 ```
