@@ -33,13 +33,13 @@ function markEmphasis(comp, theme, res, scene, revealEnd) {
   if (!box) { colorRange(res.layer, idx, end, theme.colors.accent); return 0; }
   if (motif(theme, 'highlighter')) {
     var hl = rect(comp, {x:box.x + box.w / 2, y:box.y + box.h / 2, w:box.w + 36, h:box.h + 36, fill:theme.colors.marker || theme.colors.accent, stroke:theme.colors.ink, strokeW:6, radius:14, origin:'center', comment:'decor', name:'highlighter'});
-    hl.transform.rotation.setValue(-2.3); hl.moveAfter(res.layer); hl.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(hl.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], theme.easing);
+    hl.transform.rotation.setValue(-2.3); hl.moveAfter(res.layer); hl.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(hl.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], 'pop');
     return revealEnd + 0.35;
   }
   if (motif(theme, 'underline')) {
     colorRange(res.layer, idx, end, theme.colors.accent);
     var u = rect(comp, {x:box.x, y:box.y + box.h + 10, w:box.w, h:14, fill:theme.colors.accent, origin:'left', name:'underline'});
-    u.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(u.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], theme.easing);
+    u.transform.scale.setValueAtTime(revealEnd, [0,100]); animate(u.transform.scale, revealEnd, revealEnd + 0.35, [0,100], [100,100], 'pop');
     return revealEnd + 0.35;
   }
   colorRange(res.layer, idx, end, theme.colors.accent);

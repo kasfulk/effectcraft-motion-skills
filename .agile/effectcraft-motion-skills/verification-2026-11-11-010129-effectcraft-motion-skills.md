@@ -765,3 +765,25 @@ Words start 76 px low, pass 9 px above the baseline, settle on it. Final key is 
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
 | Visual | hemat hook at 0.05/0.25/0.45/0.65/0.95 - glyphs appear left to right and rise; landed frame identical to baseline |
+
+## Verification 11 - emphasis marker overshoot (2026-11-11 13:35)
+
+The highlighter and underline markers scaled 0 -> 100 and stopped dead. Both now use the `pop`
+easing, which activates the existing overshoot branch in `animate()` (scale only, growing
+dims only): the marker runs 12 % past the word and settles back.
+
+`effectcraft-cli get S1_hook underline transform/scale --json` on a kinetik build:
+
+```
+[(0.73, [0.0, 100.0, 0.0]), (1.0, [112.0, 100.0, 0.0]), (1.1, [100.0, 100.0, 0.0])]
+```
+
+Rendered at 0.85 / 1.00 / 1.10: the rule grows under `tetap?`, passes the `?` at 1.00, and is
+flush at 1.10. Only the horizontal axis overshoots - the vertical stays at 100, so the rule
+never thickens.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
