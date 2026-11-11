@@ -1,11 +1,11 @@
 scope: effectcraft-motion-skills
 session: 2026-11-11-145725-effectcraft-motion-skills
-stage: VERIFICATION
-status: IN_PROGRESS
-updated: 2026-11-11 15:10
-completed: [intake, coding, code_review, testing]
-current: [verification]
-next: [commit, push]
+stage: COMPLETE
+status: DONE
+updated: 2026-11-11 15:24
+completed: [intake, coding, code_review, testing, verification, commit, push]
+current: []
+next: []
 
 intake: BUG (compressed path)
 
@@ -35,3 +35,12 @@ skipped:
 - `test/smoke.sh` repairs: three assertions already failed on `HEAD` (donut layer 4 opacity,
   removed `assertFonts`, outro CTA early opacity). Evidence in the verification artifact. Fixing
   them needs a decision on whether the engine or the expectation is wrong — separate work.
+
+## Shipped
+commit `5aac610` on `main`, pushed to `origin/main`.
+
+## Notes for the upload
+- `zip -r skill.zip . -x '.git/*'` -> 146 entries (cap 200). `.git` holds 951 files, so it must
+  stay out.
+- Generated render artifacts (`*.mp4` 219 MB, `*.ecproj`, `*.sheet.png`; 9 files) are gitignored
+  but present locally. Exclude them to keep the upload small.
