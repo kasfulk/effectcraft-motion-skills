@@ -3,4 +3,5 @@
 *.sheet.png
 *.mp4
 .superpowers/
+.graphicle/
 *.build.jsx
