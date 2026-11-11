@@ -958,3 +958,44 @@ specs, which is expected for a gallery.
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check --strict` x 3 examples | exit 0 each |
 | `fonts --check` | all 70 themes installed |
+
+## Verification 20 - camera shake on hard cuts (2026-11-11 16:40)
+
+The reference lists `shake(t0, dur, amp, seed)` among the camera moves; this build had none.
+A second null (`camRoot`) now sits above `cam`, so the shake composes with the pan and scale
+instead of overwriting them: camRoot -> cam -> scene layer, one property per level.
+
+Layer stack, `examples/hemat.ecproj` (top to bottom) - each scene owns its own pair:
+
+```
+layer#1 S5_outro   layer#2 cam5   layer#3 camRoot5   layer#4 S4_steps   ...
+```
+
+Keys on `camRoot2` (scene 2 cuts at 2.67):
+
+```
+[(2.67, [540.0, 960.0]), (2.77, [554.0, 968.4]), (2.83, [531.6, 955.1]), (2.9, [544.2, 962.5]), (3.0, [540.0, 960.0])]
+```
+
+16 px on x, 9.6 px on y, decaying to rest in 0.33 s. Only `cut` and `dip` entrances get it;
+`whip`, `fold`, `zoom` and the rest already carry their own motion, and the wipe family should
+not shudder.
+
+### Tuning found by looking, not by assumption
+The first cut peaked at the cut frame itself. `S2_stat` renders its background only for the
+first ~0.2 s (its counter and caption land at 0.3 s), so the shake moved an empty frame and was
+never seen. The peak moved to +0.10 s and the decay stretched to 0.33 s so it overlaps the
+content it is meant to punctuate.
+
+### Evidence level
+The transform mechanism is the one already verified in Verification 7: `cam` was itself a
+parent null whose position and scale drove measured content movement (dark-pixel area
+377,436 -> 396,358 px across 0.9 -> 2.0 s, full width). `camRoot` is the same transform one
+level up, with decaying keys on the same property, so it reaches the render by construction.
+The shake is 16 px on a 1080 px frame - a jolt in motion, not a still-frame difference.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |

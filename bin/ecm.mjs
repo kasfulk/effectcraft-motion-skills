@@ -430,13 +430,32 @@ const MAIN = String.raw`
     // scale and position (fold, pageTurn, zoom, glitch, slide), so a camera written onto that
     // same layer would overwrite their keys. Parent/child keeps the two independent.
     // Amplitudes are pushed past the comfortable amount -- a 3 % drift reads as nothing on a phone.
+    // Two nulls: camRoot carries the impact shake, cam carries the slow pan and scale, the
+    // scene layer carries its transition. One property per level, so they never overwrite.
+    main.layers.addNull();
+    var camRoot = main.layer(1); camRoot.name = 'camRoot' + (j + 1);
+    camRoot.startTime = st - ov; camRoot.outPoint = st + finalDurs[j];
+    camRoot.transform.anchorPoint.setValue([540, 960]);
     main.layers.addNull();
     var cam = main.layer(1); cam.name = 'cam' + (j + 1);
+    cam.parent = camRoot;
     cam.startTime = st - ov; cam.outPoint = st + finalDurs[j];
     cam.transform.anchorPoint.setValue([540, 960]);
     var CAM = CAMS[j % 3];
     animate(cam.transform.scale, cam.startTime, cam.outPoint, CAM.s0, CAM.s1, 'calm');
     animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
+    // A hard cut lands with weight: a short decaying shake, gone in 0.22 s. Soft transitions
+    // already carry their own motion, so they get none.
+    if (j > 0 && (trans[j] === 'cut' || trans[j] === 'dip')) {
+      // The peak sits ~0.1 s in, not at the cut: the incoming scene's content fades up from
+      // nothing, so a shake on frame 1 shakes an empty frame and is never seen.
+      var sp = camRoot.transform.position, amp = 16;
+      sp.setValueAtTime(st, [540, 960]);
+      sp.setValueAtTime(st + 0.12, [540 + amp, 960 + amp * 0.6]);
+      sp.setValueAtTime(st + 0.22, [540 - amp * 0.62, 960 - amp * 0.36]);
+      sp.setValueAtTime(st + 0.33, [540 + amp * 0.34, 960 + amp * 0.2]);
+      sp.setValueAtTime(st + 0.45, [540, 960]);
+    }
     var l = main.layers.add(pre[j]);
     l.parent = cam;
     l.startTime = st - ov; l.outPoint = st + finalDurs[j];
