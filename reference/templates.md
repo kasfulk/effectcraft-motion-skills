@@ -6,9 +6,9 @@
 
 | template | look | size | bg / ink / accent | fonts | extras |
 |---|---|---|---|---|---|
-| `plain` | plain | `3:4` | `#f2efe8` / `#111111` / `#e63323` | head `HelveticaNeue-CondensedBlack`; body `HelveticaNeue-Medium` | style `reel` |
-| `themed` | themed | `3:4` | `#f4f1ea` / `#1d1914` / `#7a1f2b` | head `Didot-Bold`; body `Baskerville` | `progress: true`; style `editorial-spread` |
-| `graphic` | graphic | `4:5` | `#10151c` / `#f4f1ea` / `#e8b04a` | head `Montserrat-ExtraBold`; body `Inter-Medium` | `progress: false`, `drawing: "cover"`; style `infopop` |
+| `plain` | plain | `3:4` | `#f2efe8` / `#111111` / `#e63323` | head `Anton-Regular`; body `SpaceGrotesk-Medium` | style `reel` |
+| `themed` | themed | `3:4` | `#f4f1ea` / `#1d1914` / `#7a1f2b` | head `PlayfairDisplay-Bold`; body `InstrumentSerif-Regular` | `progress: true`; style `editorial-spread` |
+| `graphic` | graphic | `4:5` | `#10151c` / `#f4f1ea` / `#e8b04a` | head `Montserrat-ExtraBold`; body `Inter-Regular` | `progress: false`, `drawing: "cover"`; style `infopop` |
 
 Fields: `look`, `size`, `bg`, `ink`, `accent`, `font_head`, `font_body`, `handle`, `progress`, `drawing`, `style`.
 

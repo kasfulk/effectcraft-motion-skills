@@ -863,3 +863,38 @@ particles scene on landing. No background strip at any of the three.
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 16 - deck templates render without installing system fonts (2026-11-11 15:10)
+
+All three shipped deck templates named system PostScript fonts, so `slides` refused every deck
+until the user ran `fonts --install`:
+
+```
+plain:   fonts not installed: display=HelveticaNeue-CondensedBlack (not bundled), body=HelveticaNeue-Medium (not bundled) ...
+```
+
+Each is now mapped to a bundled face that keeps the template's character:
+
+| template | was | now |
+|---|---|---|
+| `plain` | HelveticaNeue-CondensedBlack / HelveticaNeue-Medium | Anton-Regular / SpaceGrotesk-Medium |
+| `themed` | Didot-Bold / Baskerville | PlayfairDisplay-Bold / InstrumentSerif-Regular |
+| `graphic` | Inter-Medium | Inter-Regular |
+
+`node bin/ecm.mjs slides` on a 3-slide deck:
+
+```
+slides OK: plain
+slides OK: themed
+slides OK: graphic
+```
+
+Contact sheet inspected for all three: 9/9 slides render, emphasis colour applies, page numbers
+and handle render, no fallback glyphs or missing-font warnings.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 2 examples | exit 0 each |
+| `slides` x 3 templates | exit 0 each |
