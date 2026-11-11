@@ -1112,3 +1112,17 @@ exposure, and `S3_bars` scale is static at 101.89 so the headroom was not overwr
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+### Follow-up: the shake is visible, not dead motion
+
+Scene 3 (`S3_bars`) starts at 6.1, not 5.74 — the dark frame at 5.86 is scene 2's own dark
+background, and every scene here uses the default `cut` (no dip in this spec). The shake peaks
+at 6.23 on a light, fully-visible frame:
+
+| time | title left edge |
+|---|---|
+| 6.10 | 65 px |
+| 6.22 | 78 px |
+
+13 px of measured movement on the title — the shake reads. Edges at 6.10/6.22/6.40 are
+`211/9 211/9 209/2 194/2`: content everywhere, no exposure.
