@@ -936,3 +936,25 @@ S3_dotgrid  [(5.8, [-540, 960]), (6.37, [540, 960])]   incoming enters from the 
 Rendered at 5.85 / 6.05 / 6.30: sharp counter, mid-move with the dark incoming scene on the
 left and the blurred outgoing counter on the right, dotgrid settled. The seam is contiguous -
 no background column in either direction.
+
+## Verification 19 - doc drift on the fonts command (2026-11-11 16:00)
+
+`fonts` is a real command with `--list`, `--check` and `--install`, and two error messages tell
+the user to run it, but it was absent from the usage line, from `reference/cli.md` and from the
+README quick start. Added to all three, including the rule that themes and templates must name a
+bundled PostScript name rather than a family or system font.
+
+```
+node bin/ecm.mjs fonts --check
+all 70 themes use installed fonts
+```
+
+`check --strict` on all three examples: exit 0 each, only C02 (scene count) on the two showcase
+specs, which is expected for a gallery.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check --strict` x 3 examples | exit 0 each |
+| `fonts --check` | all 70 themes installed |

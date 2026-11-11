@@ -144,6 +144,23 @@ node bin/ecm.mjs slides deck.json --out deck-slides/
 
 Renders one PNG per slide at the template's size. See [templates.md](templates.md) for deck spec shape and field descriptions.
 
+### `fonts`
+
+```sh
+node bin/ecm.mjs fonts --list
+node bin/ecm.mjs fonts --check
+node bin/ecm.mjs fonts --install
+```
+
+`--list` prints the bundled families grouped by category. `--check` verifies that every theme
+and deck template names a font that is actually installed, and exits non-zero listing the
+missing ones. `--install` copies the bundled faces into the system font directory so the engine
+can resolve them.
+
+Themes and templates must name a bundled PostScript name (`Anton-Regular`,
+`PlayfairDisplay-Bold`), not a family name. A theme that names a system font such as
+`HelveticaNeue-Medium` fails `--check` and refuses to render.
+
 ## Machine safety
 
 Run only one EffectCraft engine process at a time. Prefix runs with:

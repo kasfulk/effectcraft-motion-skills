@@ -1078,5 +1078,5 @@ if (isMain()) {
     if (!Object.hasOwn(loadThemes(), arg)) { console.error(`theme: unknown ${JSON.stringify(arg)} (see reference/themes.md)`); process.exitCode = 1; }
     else process.exitCode = newSpec(arg, resolve(process.cwd(), out || `${arg}.json`));
   }
-  else { console.error("usage: ecm.mjs <check|preview|render|themes|slides|new> <spec|deck|theme> [out]"); process.exitCode = 1; }
+  else { console.error("usage: ecm.mjs <check|preview|render|themes|slides|new|fonts> <spec|deck|theme> [out]"); process.exitCode = 1; }
 }
