@@ -163,8 +163,9 @@ function sceneErrors(s) {
       const MODEL_EXTS = [".glb", ".gltf", ".obj", ".stl", ".fbx"];
       if (!str(s.src)) e.push("src required");
       else {
+        // A bare shipped name ("torus") is legal: resolveModelFile appends .glb.
         const ext = extname(s.src).toLowerCase();
-        if (!MODEL_EXTS.includes(ext)) e.push(`src must be .glb, .gltf, .obj, .stl, or .fbx`);
+        if (ext && !MODEL_EXTS.includes(ext)) e.push(`src must be .glb, .gltf, .obj, .stl, or .fbx`);
       }
       if (s.scale !== undefined && !(Number.isFinite(s.scale) && s.scale >= 1 && s.scale <= 400)) e.push("scale must be 1–400");
       if (s.spin !== undefined && !(Number.isFinite(s.spin) && s.spin >= -1440 && s.spin <= 1440)) e.push("spin must be -1440–1440");
