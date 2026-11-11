@@ -1182,3 +1182,22 @@ own backgrounds — the corner pixel at 10.0/13.0 is `srgb(200,44,30)`, the them
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 25 - dense sweep, all three examples (2026-11-11 19:10)
+
+Every 0.4 s across each example, flagging any 2 px edge strip that is flat background
+(`mean 0, std 0`):
+
+| example | frames | flat edges |
+|---|---|---|
+| `all-scenes` | 102 | none |
+| `hemat` | 46 | none |
+| `motion-gallery` | 101 | none |
+
+`motion-gallery` first reported 25 flat-edge frames at 5.2 and 22.4-24.8. Cause was not the
+camera: `examples/motion-gallery.ecproj` was a stale build from before the fix, still carrying
+`cam8 112 -> 104` and a layer scale of `89.29` with no head factor. `.ecproj` is gitignored, so
+nothing stale was committed. After `node bin/ecm.mjs preview examples/motion-gallery.json` the
+layer reads `100.94` (= 107/106) and the sweep is clean.
+
+Lesson: `.ecproj` is a build artifact - always rebuild from the `.json` spec before measuring.
