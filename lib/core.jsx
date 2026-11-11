@@ -1,5 +1,6 @@
 // core
 var SCENE_N = 0;
+var SCENE_NTH = 0;
 var SAFE = {x0:90, x1:940, y0:250, y1:1450};
 var CX = 515;
 function fmtID(value, decimals) {

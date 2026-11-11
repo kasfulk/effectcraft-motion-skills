@@ -803,3 +803,29 @@ highest.
 
 Rendered at 5.85 / 6.03 / 6.20: sharp at the start, the outgoing `72%` fully smeared at the
 peak with the incoming scene's leading edge soft, sharp again on landing.
+
+## Verification 13 - layout rotation within a reel (2026-11-11 14:20)
+
+All 70 themes ship a `layouts` pin for every scene type, and they cluster hard:
+`compare -> stack` in 61 of 70, `stat -> left` in 43, `quote -> card` in 41. So a reel with
+three stat scenes drew the same composition three times - the monotony reported as "layout yang
+itu itu aja" comes from repetition inside one reel, not from the theme choice.
+
+`sceneLayout` now rotates: the first scene of a type uses the theme's pin, each later scene of
+that type advances one step through `LAYOUTS[type]`. A scene's own `layout` still wins.
+`SCENE_NTH` is set per type in the build loop; `LAYOUTS` is emitted as a build-script global
+(it was only in the Node scope, which threw `ReferenceError: LAYOUTS is not defined`).
+
+Three `stat` scenes, theme `kinetik`, `value` 40 / 60 / 80:
+
+| scene | layout rendered |
+|---|---|
+| 1 | `ring` - 40% inside a progress ring |
+| 2 | `left` - 60%, left-aligned |
+| 3 | `center` - 80%, centred |
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |

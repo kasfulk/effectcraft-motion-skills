@@ -342,9 +342,10 @@ const MAIN = String.raw`
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
+    var seen = seen || {};
     var tr = i === 0 ? 'cut' : (scene.transition || SPEC.transition || 'cut');
     var ov = TRLEN[tr] || 0;
-    SCENE_N = i + 1;
+    SCENE_N = i + 1; SCENE_NTH = seen[type] = (seen[type] || 0); seen[type] = SCENE_NTH + 1;
     var c = app.project.items.addComp('S' + (i + 1) + '_' + type, 1080, 1920, 1, dur + ov, 30);
     c.motionBlur = true; c.motionBlurSamples = 8;
     bgFor(c, THEME, scene.bg);
@@ -462,6 +463,7 @@ export function buildScript(spec, theme, durs) {
     `var SPEC = ${json(spec)};`,
     `var THEME = ${json(theme)};`,
     `var DURS = ${json(durs)};`,
+    `var LAYOUTS = ${json(LAYOUTS)};`,
     readLib("../lib/core.jsx"),
     readLib("../lib/fx.jsx"),
     readLib("../lib/motion.jsx"),

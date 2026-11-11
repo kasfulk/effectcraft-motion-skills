@@ -52,7 +52,15 @@ function shadow(layer, color, opacity, direction, distance, softness) {
   e.property('Direction').setValue(direction); e.property('Distance').setValue(distance); e.property('Softness').setValue(softness);
 }
 var DEFAULT_LAYOUT = {hook:'center', kinetic:'slide', quote:'center', stat:'center', bars:'vertical', donut:'ring', steps:'list', compare:'stack', outro:'center'};
-function sceneLayout(theme, scene) { return scene.layout || (theme.layouts && theme.layouts[scene.type]) || DEFAULT_LAYOUT[scene.type]; }
+function sceneLayout(theme, scene) {
+  if (scene.layout) return scene.layout;
+  var base = (theme.layouts && theme.layouts[scene.type]) || DEFAULT_LAYOUT[scene.type];
+  // A reel with three stat scenes used to get the same composition three times, because the
+  // theme pins one layout per scene type. Rotate by how many scenes of this type came before:
+  // the first keeps the theme's own pin, later ones move through the other valid layouts.
+  var opts = LAYOUTS[scene.type], i = opts ? opts.indexOf(base) : -1;
+  return i < 0 ? base : opts[(i + (SCENE_NTH || 0)) % opts.length];
+}
 var SCENES = {
   hook: function (comp, theme, scene, dur) {
     var layout = sceneLayout(theme, scene);

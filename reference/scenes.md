@@ -38,6 +38,11 @@ Valid `layout` values, and the default when neither the scene nor the theme sets
 | `compare` | `stack`, `split` | `stack` |
 | `outro` | `center`, `pill`, `handle` | `center` |
 
+A scene's own `layout` always wins. Otherwise the first scene of a type uses the theme's
+`layouts[type]` pin (or the default above), and each later scene of that same type rotates
+one step through its layout list. A reel with three `stat` scenes gets three different
+compositions instead of the same one three times.
+
 ## `hook`
 
 | field | required? | type | limits | notes |
