@@ -506,29 +506,30 @@ var SCENES = {
       var nPts = Math.max(left.points.length, right.points.length);
       var blockH = 180 + nPts * 132;
       var y0 = SAFE.y0 + Math.max(0, (SAFE.y1 - SAFE.y0 - blockH) / 2);
-      var renderColumn = function (col, x, align) {
-        var y = y0, dir = align === 'left' ? -1 : 1;
-        var title = text(comp, col.title, {font:theme.fonts.display,size:72,min:56,color:ink,align:align,x:x,y:y,maxW:cw - 40,maxH:180,name:align+'-title'});
+      // Both columns are left-aligned with the check outside the text: text() anchors at the
+      // box centre, so a right-aligned column put the check on top of its own words.
+      var renderColumn = function (col, x, dir, side) {
+        var y = y0;
+        var title = text(comp, col.title, {font:theme.fonts.display,size:72,min:56,color:ink,align:'left',x:x,y:y,maxW:cw - 40,maxH:180,name:side+'-title'});
         var tp = title.layer.transform.position.value;
         animate(title.layer.transform.position, 0.2, 0.6, [tp[0] + dir*60, tp[1]], [tp[0], tp[1]], theme.easing);
         animate(title.layer.opacity, 0.2, 0.6, 0, 100, theme.easing);
         y += 180;
         col.points.forEach(function (pt, pi) {
           var at = 0.45 + pi * 0.15, end = at + 0.35;
-          var sym = text(comp, '✓', {font:theme.fonts.body,size:52,min:48,color:ink,align:align,x:x,y:y,maxW:cw - 40,maxH:80,name:align+'-sym-'+(pi+1)});
+          var sym = text(comp, '✓', {font:theme.fonts.body,size:52,min:48,color:ink,align:'left',x:x,y:y,maxW:cw - 40,maxH:80,name:side+'-sym-'+(pi+1)});
           var sp = sym.layer.transform.position.value;
           animate(sym.layer.transform.position, at, end, [sp[0] + dir*40, sp[1]], [sp[0], sp[1]], theme.easing);
           animate(sym.layer.opacity, at, end, 0, 100, theme.easing);
-          y += sym.h + 16;
-          var txt = text(comp, pt, {font:theme.fonts.body,size:52,min:48,color:ink,align:align,x:x + (align==='left'?20:-20),y:y,maxW:cw - 60, maxH:160,name:align+'-point-'+(pi+1)});
+          var txt = text(comp, pt, {font:theme.fonts.body,size:52,min:48,color:ink,align:'left',x:x + 60,y:y,maxW:cw - 120, maxH:160,name:side+'-point-'+(pi+1)});
           var xp = txt.layer.transform.position.value;
           animate(txt.layer.transform.position, at, end, [xp[0] + dir*40, xp[1]], [xp[0], xp[1]], theme.easing);
           animate(txt.layer.opacity, at, end, 0, 100, theme.easing);
-          y += txt.h + 16; settle = Math.max(settle, end);
+          y += Math.max(sym.h, txt.h) + 16; settle = Math.max(settle, end);
         });
       };
-      renderColumn(left, lw, 'left');
-      renderColumn(right, rw, 'right');
+      renderColumn(left, lw, -1, 'left');
+      renderColumn(right, rw, 1, 'right');
       return Math.max(settle, 1.0);
     }
     var cardW = (SAFE.x1 - SAFE.x0) - 26, cardX = CX;

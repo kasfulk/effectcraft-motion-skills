@@ -577,3 +577,13 @@ Every comp had a 180° shutter and 16 samples, but all 499 layers had `motion_bl
 | No regression | `node --test test/ecm.test.mjs` | 46/46 pass |
 | No regression | `node scripts/smoke-layouts.mjs` | 50/50 cases build |
 | Examples still valid | `check` on hemat / all-scenes / motion-gallery | exit 0 each |
+
+## Verification 3b — compare split alignment (2026-11-11 11:30)
+
+| Criterion | Command | Observed |
+|---|---|---|
+| Checkmark shares a line with its point | `render-frame --comp S13_compare --time 2.5` | ✓ Impulsif / ✓ Tanpa catatan (wrapped) / ✓ Terencana / ✓ Terukur |
+| No check over text | same frame | both columns left-aligned, check outside the text box |
+| No regression | `node --test test/ecm.test.mjs` | 46/46 pass |
+| No regression | `node scripts/smoke-layouts.mjs` | 50/50 cases build |
+| Examples valid | `check` on hemat / all-scenes / motion-gallery | exit 0 each |
