@@ -219,7 +219,7 @@ var SCENES_EXTRA = {
     var cd = ellipse(comp, {cx:CX, cy:cy, d:24, fill:theme.colors.accent, name:'shape', comment:'decor'});
     animate(cd.transform.scale, 0.2, 0.5, [70,70], [100,100], theme.easing);
     // value in center
-    var vText = text(comp, fmtID(val) + (maxV !== 24 ? '/' + fmtID(maxV) : ''), {font:theme.fonts.display, size:80, min:56, color:ink, align:'center', x:CX, y:cy-30, maxW:200, maxH:100, name:'value'});
+    var vText = text(comp, fmtID(val) + (maxV !== 24 ? '/' + fmtID(maxV) : ''), {font:theme.fonts.display, size:80, min:56, color:ink, align:'center', x:CX, y:cy-120, maxW:200, maxH:100, name:'value'});
     animate(vText.layer.opacity, 1.0, 1.4, 0, 100, theme.easing);
     // label below
     var settle = 1.4;
@@ -240,7 +240,7 @@ var SCENES_EXTRA = {
     // centre
     var centreType = scene.centre || 'dot';
     if (centreType === 'dot') {
-      var cd = ellipse(comp, {cx:cx, cy:cy, d:60, fill:theme.colors.accent, name:'shape', comment:'decor'});
+      var cd = ellipse(comp, {cx:cx, cy:cy, d:60, fill:ink, name:'shape', comment:'decor'});
       animate(cd.transform.scale, 0.1, 0.4, [70,70], [100,100], theme.easing);
       animate(cd.transform.opacity, 0.1, 0.4, 0, 100, theme.easing);
     } else if (centreType === 'word' && scene.centreText) {
@@ -257,7 +257,7 @@ var SCENES_EXTRA = {
       var speed = spec.speed === undefined ? 1 : spec.speed;
       var ringAt = 0.3 + i * 0.2;
       // ring track
-      var track = ring(comp, {cx:cx, cy:cy, d:rr*2, strokeW:3, color:theme.colors.data, name:'shape', comment:'decor'});
+      var track = ring(comp, {cx:cx, cy:cy, d:rr*2, strokeW:3, color:ink, name:'shape', comment:'decor'});
       track.layer.transform.opacity.setValue(40);
       track.layer.transform.opacity.setValueAtTime(ringAt, 0);
       animate(track.layer.transform.opacity, ringAt, ringAt+0.3, 0, 40, theme.easing);
@@ -268,7 +268,7 @@ var SCENES_EXTRA = {
         var bx = cx + Math.cos(rad) * rr;
         var by = cy + Math.sin(rad) * rr * tilt;
         var bd = 20;
-        var body = ellipse(comp, {cx:bx, cy:by, d:bd, fill:theme.colors.accent, name:'shape', comment:'decor'});
+        var body = ellipse(comp, {cx:bx, cy:by, d:bd, fill:ink, name:'shape', comment:'decor'});
         body.transform.opacity.setValueAtTime(ringAt, 0);
         animate(body.transform.opacity, ringAt, ringAt+0.2, 0, 100, theme.easing);
         // soft trail via scale pulse
@@ -475,23 +475,23 @@ var SCENES_EXTRA = {
       var kind = lv.kind || 'dot';
       var n = lv.n === undefined ? 1 : lv.n;
       if (kind === 'dot') {
-        var dot = ellipse(comp, {cx:cx, cy:cy, d:Math.min(100, 60 + i*40), fill:theme.colors.accent, name:'shape', comment:'decor'});
+        var dot = ellipse(comp, {cx:cx, cy:cy, d:Math.min(100, 60 + i*40), fill:ink, name:'shape', comment:'decor'});
         animate(dot.transform.scale, at, end, [200,200], [100,100], 'calm');
         animate(dot.transform.opacity, at, at+0.2, 0, 100, theme.easing);
       } else if (kind === 'grid') {
-        var gCols = Math.min(8, n), gRows = Math.ceil(n / gCols), gCell = 60;
+        var gCols = Math.ceil(Math.sqrt(n)), gRows = Math.ceil(n / gCols), gCell = Math.min(120, 420 / Math.max(1, gCols - 1));
         var gX0 = cx - (gCols-1)*gCell/2, gY0 = cy - (gRows-1)*gCell*0.6/2;
         for (var gi = 0; gi < n; gi++) {
           var gx = gX0 + (gi % gCols)*gCell, gy = gY0 + Math.floor(gi / gCols)*gCell*0.6;
-          var gdot = ellipse(comp, {cx:gx, cy:gy, d:16, fill:gi===n-1?theme.colors.accent:theme.colors.data, name:'shape', comment:'decor'});
+          var gdot = ellipse(comp, {cx:gx, cy:gy, d:16, fill:ink, name:'shape', comment:'decor'});
           gdot.transform.opacity.setValueAtTime(at, 0);
           animate(gdot.transform.opacity, at, at+0.3, 0, 100, theme.easing);
           animate(gdot.transform.scale, at, at+0.3, [200,200], [100,100], 'calm');
         }
       } else if (kind === 'rings') {
         for (var ri = 0; ri < n; ri++) {
-          var rr = 60 + ri*50;
-          var rr2 = ring(comp, {cx:cx, cy:cy, d:rr*2, strokeW:4, color:ri===n-1?theme.colors.accent:theme.colors.data, name:'shape', comment:'decor'});
+          var rr = 90 + ri*80;
+          var rr2 = ring(comp, {cx:cx, cy:cy, d:rr*2, strokeW:4, color:ink, name:'shape', comment:'decor'});
           rr2.layer.transform.opacity.setValueAtTime(at, 0);
           animate(rr2.layer.opacity, at, at+0.3, 0, ri===n-1?100:60, theme.easing);
           animate(rr2.layer.transform.scale, at, at+0.4, [150,150], [100,100], 'calm');
