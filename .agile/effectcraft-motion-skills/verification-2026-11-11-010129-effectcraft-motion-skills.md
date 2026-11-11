@@ -651,3 +651,37 @@ and every `fonts.*` value is a key of `assets/fonts/fonts.json`.
 | Spec valid | `check examples/hemat.json` | exit 0, 5 scenes, 18.37 s |
 
 All three example MP4s are now built from the current code.
+
+## Verification 7 — camera and parallax (2026-11-11 11:52)
+
+Comparison against `../reel-skill-chat/references/look.md` named the reason the output reads
+flat: *"A camera on every scene… Nothing is a locked frame"* and *"Parallax: near layers move
+faster than far ones"*, plus *"Push key poses 10 to 30% further than feels right."* This
+project's camera only scaled, and all three moves were essentially the same shot.
+
+Changes in `bin/ecm.mjs`:
+
+| Change | Detail |
+|---|---|
+| `CAMS` table | four moves, each with scale **and** pan: push right, pull left, crane up, pull right; scale range 104–112 % instead of 100–106 % |
+| Camera on a null | `main.layers.addNull()` + `l.parent = cam`. Transitions animate the scene layer's own scale and position (fold, pageTurn, zoom, glitch, slide), so a camera written onto that layer overwrote their keys — the conflict predates this change |
+| Parallax | atmosphere `glow*` layers counter-move by `0.8 × pan` over the scene, so the far plane travels ~20 % of the content's distance |
+
+Two defects found and fixed while building it:
+
+| Defect | Symptom | Fix |
+|---|---|---|
+| `CAMS` declared after the loop that uses it | `scene 1 (hook): TypeError: cannot convert 'null' or 'undefined' to object` | hoisted above `var pre = []` |
+| `layers.addNull()` returns a **function**, not the layer | `cam.name = …` threw | `main.layers.addNull(); var cam = main.layer(1);` |
+| Parallax applied to every `decor` layer | the hook `slab` is `decor` **and** has its own slide-in, so the drift overwrote it and pinned the band at x = −1080 — dark area collapsed from 377 k to 43 k pixels | narrowed to `adjustmentLayer === false && name.startsWith('glow')` |
+
+| Criterion | Command | Observed |
+|---|---|---|
+| Camera moves | frames at 0.9 s / 2.0 s, dark-pixel bbox | 377 436 → 396 358 px, full width both — content grows and drifts left as the camera pushes right |
+| Slab intact | same frames | band full width at both times |
+| Glow parallax present | `props S1_hook glow0 --flat` | `transform/position … [2 keys]` |
+| Scene decor untouched | `props S1_hook slab --flat` | `transform/position [-1080, 1150] [2 keys]` — only its own slide-in |
+| Parented scale renders | isolated null test | 300 px box → 336 px at 112 %, centred |
+| Tests | `node --test test/ecm.test.mjs` | 46/46 |
+| Layouts | `node scripts/smoke-layouts.mjs` | 50/50 |
+| Examples | `check` × 3 | exit 0 each |

@@ -332,6 +332,13 @@ const MAIN = String.raw`
 (function () {
   function ceilFrame(s) { return Math.ceil(s * 30) / 30; }
   var TRLEN = ${json(TRANSITION_LEN)};
+  // camera moves cycled by scene: [scale from, scale to, pan from, pan to]
+  var CAMS = [
+    {s0:[104,104], s1:[112,112], p0:[540,960], p1:[576,936]},  // push in, drift right
+    {s0:[112,112], s1:[104,104], p0:[540,960], p1:[504,984]},  // pull out, drift left
+    {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,912]},  // push in, crane up
+    {s0:[112,112], s1:[106,106], p0:[540,960], p1:[566,960]}   // pull out, drift right
+  ];
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0;
   for (var i = 0; i < SPEC.scenes.length; i++) {
     var scene = SPEC.scenes[i], type = scene.type, dur = finalDurs[i];
@@ -360,6 +367,19 @@ const MAIN = String.raw`
       entered = Math.max(entered, applyFx(c, THEME, fxs, entered));
       if (scene.elements && typeof ELEMENTS !== 'undefined') entered = Math.max(entered, ELEMENTS.apply(c, THEME, scene.elements, {dur: dur}));
       if (typeof ATMOSPHERE !== 'undefined' && ATMOSPHERE.overlay) ATMOSPHERE.overlay(c, THEME, {atmosphere: scene.atmosphere});
+      // Parallax: the atmosphere is the far plane, so it lags the camera. Without this the pan
+      // moves frame and content together and the shot reads as flat.
+      var PCAM = CAMS[i % 3], pdx = (PCAM.p1[0] - PCAM.p0[0]) * 0.8, pdy = (PCAM.p1[1] - PCAM.p0[1]) * 0.8;
+      if (pdx || pdy) {
+        for (var pn = 1; pn <= c.numLayers; pn++) {
+          var ply = c.layer(pn);
+          // Only the atmosphere glows: scene decor (slab, highlighter, hook-bar) is placed
+          // against the text and has its own position keys, so drifting it breaks the layout.
+          if (ply.adjustmentLayer || String(ply.name).indexOf('glow') !== 0) continue;
+          var pp = ply.transform.position, pv = pp.value;
+          animate(pp, 0, dur + ov, [pv[0], pv[1]], [pv[0] - pdx, pv[1] - pdy], 'calm');
+        }
+      }
       checkSafe(c, entered);
     } catch (e) {
       var msg = (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message;
@@ -389,18 +409,20 @@ const MAIN = String.raw`
   var layers = [];
   for (var j = 0; j < pre.length; j++) {
     var st = starts[j], ov = TRLEN[trans[j]] || 0;
+    // Camera on every scene, driven from a null: the transitions animate the scene layer's own
+    // scale and position (fold, pageTurn, zoom, glitch, slide), so a camera written onto that
+    // same layer would overwrite their keys. Parent/child keeps the two independent.
+    // Amplitudes are pushed past the comfortable amount -- a 3 % drift reads as nothing on a phone.
+    main.layers.addNull();
+    var cam = main.layer(1); cam.name = 'cam' + (j + 1);
+    cam.startTime = st - ov; cam.outPoint = st + finalDurs[j];
+    cam.transform.anchorPoint.setValue([540, 960]);
+    var CAM = CAMS[j % 3];
+    animate(cam.transform.scale, cam.startTime, cam.outPoint, CAM.s0, CAM.s1, 'calm');
+    animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
     var l = main.layers.add(pre[j]);
+    l.parent = cam;
     l.startTime = st - ov; l.outPoint = st + finalDurs[j];
-    // three camera moves cycled by scene so two shots in a row never move the same way
-    var cam = j % 3;
-    if (cam === 0) {
-      animate(l.transform.scale, l.startTime, l.outPoint, [100,100], [106,106], 'calm');
-    } else if (cam === 1) {
-      animate(l.transform.scale, l.startTime, l.outPoint, [106,106], [100,100], 'calm');
-    } else {
-      animate(l.transform.scale, l.startTime, l.outPoint, [106,106], [110,110], 'calm');
-      animate(l.transform.position, l.startTime, l.outPoint, [540,960], [560,944], 'calm');
-    }
     layers.push(l);
   }
   for (var k = 1; k < layers.length; k++) {
