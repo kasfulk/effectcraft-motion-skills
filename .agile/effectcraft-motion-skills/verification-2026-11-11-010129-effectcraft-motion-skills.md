@@ -737,3 +737,31 @@ Column means (0-255, ten 108 px columns) at the transition mid-point:
 | 6.30 (landed) | 211 211 213 214 213 215 217 218 221 219 - incoming scene settled |
 
 The outgoing `72%` is visibly directionally smeared at 5.80 and sharp again at the start.
+
+## Verification 10 - entrance overshoot on every text reveal (2026-11-11 13:10)
+
+`pop` easing was unreachable in practice: zero of the 83 `animate()` calls in
+`lib/scenes.jsx` pass it, so the 12 % scale overshoot never fired and every entrance moved
+linearly into place. Instead of routing 83 call sites, the lever is `revealText` - every text
+layer in every scene goes through it.
+
+| Before | After |
+|---|---|
+| static animator offset `[0, 60, 0]` | keys `[0,76,0]` -> `[0,-9,0]` -> `[0,0,0]` |
+
+Verified on `examples/hemat.ecproj`, layer `S1_hook / text`:
+
+```
+effectcraft-cli get S1_hook text text/animators/animator/properties/position --json
+[(0.13, [0.0, 76.0, 0.0]), (0.57, [0.0, -9.0, 0.0]), (0.73, [0.0, 0.0, 0.0])]
+```
+
+Words start 76 px low, pass 9 px above the baseline, settle on it. Final key is exactly
+`[0,0,0]`, so no text can land offset.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
+| Visual | hemat hook at 0.05/0.25/0.45/0.65/0.95 - glyphs appear left to right and rise; landed frame identical to baseline |
