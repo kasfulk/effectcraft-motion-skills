@@ -231,7 +231,7 @@ var SAFE = {x0:90, x1:940, y0:250, y1:1450}
 var CX = 515
 ```
 
-`text` fits and wraps text. `rect` creates a rectangle. `ellipse` creates a circle. `ring` creates a stroked ellipse and trim-path handle. `animate` adds eased keyframes. `revealText` reveals text by selector offset, with each word rising 76 px and overshooting 9 px past the baseline before it settles. `colorRange` applies a text fill-color range. `fmtID` formats numbers with Indonesian separators. `counterExpr` returns a live counting Source Text expression. `onColor` chooses the higher-contrast base or ink color. `SAFE` defines content bounds, and `CX` is the content center.
+`text` fits and wraps text. `rect` creates a rectangle. `ellipse` creates a circle. `ring` creates a stroked ellipse and trim-path handle. `animate` adds eased keyframes; the `pop` easing adds a squash-and-stretch key on scale - the moving axis overshoots 12 % and, when it is the only axis moving, the perpendicular one dips 6 %. `revealText` reveals text by selector offset, with each word rising 76 px and overshooting 9 px past the baseline before it settles. `colorRange` applies a text fill-color range. `fmtID` formats numbers with Indonesian separators. `counterExpr` returns a live counting Source Text expression. `onColor` chooses the higher-contrast base or ink color. `SAFE` defines content bounds, and `CX` is the content center.
 
 Content must stay inside `SAFE` (`x 90–940`, `y 250–1450`). Layers with comment `bg` or `decor` are exempt. A `text` call that still does not fit at its minimum size throws `text too long`.
 

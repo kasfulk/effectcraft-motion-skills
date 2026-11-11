@@ -128,7 +128,16 @@ function animate(prop, t0, t1, v0, v1, easing) {
   var grows = false; for (var gi = 0; gi < dims; gi++) if (v1[gi] > v0[gi]) grows = true;
   var overshoot = name === 'pop' && prop.matchName === 'ADBE Scale' && Array.isArray(v1) && grows;
   prop.setValueAtTime(t0, v0); var k1 = prop.numKeys;
-  if (overshoot) { var over = []; for (var i = 0; i < dims; i++) over.push(v1[i] !== v0[i] ? v1[i] * 1.12 : v1[i]); prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over); }
+  if (overshoot) {
+    // Squash and stretch: the axis that grows overshoots 12 %, and when that is the only axis
+    // moving the perpendicular one dips 6 %, so the shape stretches along its motion instead of
+    // scaling uniformly. Both axes growing means a plain zoom -- no perpendicular to squash.
+    var over = [], moving = [];
+    for (var i = 0; i < dims; i++) { over.push(v1[i]); if (v1[i] !== v0[i]) moving.push(i); }
+    if (moving.length === 1) { for (var j = 0; j < dims; j++) if (j !== moving[0] && v1[j] !== 0) over[j] = v1[j] * 0.94; over[moving[0]] = v1[moving[0]] * 1.12; }
+    else { for (var k = 0; k < moving.length; k++) over[moving[k]] = v1[moving[k]] * 1.12; }
+    prop.setValueAtTime(t0 + 0.7 * (t1 - t0), over);
+  }
   prop.setValueAtTime(t1, v1); var k2 = prop.numKeys, outEase = easeArray(profile.out, dims), inEase = easeArray(profile.in, dims);
   prop.setTemporalEaseAtKey(k1, free, outEase); prop.setTemporalEaseAtKey(k2, inEase, free);
   if (overshoot) { var ko = k2 - 1; prop.setTemporalEaseAtKey(ko, outEase, inEase); }

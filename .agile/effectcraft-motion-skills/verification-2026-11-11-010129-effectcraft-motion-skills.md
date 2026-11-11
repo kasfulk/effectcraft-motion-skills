@@ -898,3 +898,25 @@ and handle render, no fallback glyphs or missing-font warnings.
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 2 examples | exit 0 each |
 | `slides` x 3 templates | exit 0 each |
+
+## Verification 17 - squash and stretch on the pop easing (2026-11-11 15:30)
+
+The `pop` overshoot scaled every growing axis by the same 12 %, which is a zoom, not a squash.
+It now stretches along the motion: the moving axis overshoots 12 % and, when it is the only
+axis moving, the perpendicular one dips 6 %. Both axes growing still means a plain zoom, so
+nothing that scales uniformly is distorted.
+
+`effectcraft-cli get S1_hook underline transform/scale --json`:
+
+```
+[(0.73, [0.0, 100.0, 0.0]), (1.0, [112.0, 94.0, 0.0]), (1.1, [100.0, 100.0, 0.0])]
+```
+
+Rendered at 0.95 / 1.00 / 1.10: the rule grows under `tetap?`, passes the `?` at 1.00 while
+visibly thinner, and lands flush at full thickness.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
