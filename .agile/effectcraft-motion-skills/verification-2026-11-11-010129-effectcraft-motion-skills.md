@@ -626,3 +626,16 @@ Stills prove layout; only the MP4 proves motion, transitions and the counter fix
 
 `examples/*.mp4` and `*.sheet.png` are gitignored build artifacts; both were rebuilt against the
 current code because `motion-gallery.mp4` predated every fix in this pass.
+
+## Verification 5 — all 70 themes (2026-11-11 11:25)
+
+The smoke script exercises every layout under one theme, so a theme with a malformed colour or a
+font that is not installed would only surface when someone used it. Checked the data directly:
+
+```sh
+node -e 'const T=require("./themes.json"),F=require("./assets/fonts/fonts.json"); ...'
+# themes=70 fonts=87 problems=0
+```
+
+Every `colors.*` value is a six-digit hex (the `#fff` NaN path is unreachable from shipped themes)
+and every `fonts.*` value is a key of `assets/fonts/fonts.json`.
