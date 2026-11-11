@@ -610,3 +610,19 @@ One place, so it covers `stat` (4 layouts), `bars`, `donut` and the two `scenes-
 
 Test updated: the motion-blur assertion pinned the literal `c.layer(mb).motionBlur = true`, which the
 fix replaced; it now asserts the counter exception instead of the old source text.
+
+## Verification 4 — encoded video, both examples (2026-11-11 11:20)
+
+Stills prove layout; only the MP4 proves motion, transitions and the counter fix end to end.
+
+| Criterion | Command | Observed |
+|---|---|---|
+| No black frame at a cut | `check-cuts.mjs all-scenes.mp4` over 9 boundaries | min mean luminance 0.064 (ink bg), no near-black |
+| No black frame at a cut | `check-cuts.mjs motion-gallery.mp4` over 15 boundaries | no near-black |
+| Counter legible in video | frame @ 10.6 s / 11.4 s | `RP 470.197` / `RP 1.250.000`, one value each |
+| Counter legible in video | frame @ 3.6 s (gallery) | `72%`, one value |
+| Scenes animate | frame diff 3.0 s vs 4.0 s | 2.7 % pixels differ |
+| Gallery sheet | `preview examples/motion-gallery.json` | 16 panels, all legible, compare checks aligned |
+
+`examples/*.mp4` and `*.sheet.png` are gitignored build artifacts; both were rebuilt against the
+current code because `motion-gallery.mp4` predated every fix in this pass.
