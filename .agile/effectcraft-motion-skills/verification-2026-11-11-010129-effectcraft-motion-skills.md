@@ -920,3 +920,19 @@ visibly thinner, and lands flush at full thickness.
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 18 - whip in both directions (2026-11-11 15:45)
+
+`trWhip` picks its direction from `theme.align`, and only the rightward case had been rendered.
+17 of 70 themes are left-aligned (`reel`, `pitch`, `kinetik`, `blueprint`, `chalkboard-lesson`, ...).
+
+Theme `kinetik` (`align: left`), same spec:
+
+```
+S2_counter  [(5.8, [540, 960]), (6.37, [1620, 960])]   outgoing exits right
+S3_dotgrid  [(5.8, [-540, 960]), (6.37, [540, 960])]   incoming enters from the left
+```
+
+Rendered at 5.85 / 6.05 / 6.30: sharp counter, mid-move with the dark incoming scene on the
+left and the blurred outgoing counter on the right, dotgrid settled. The seam is contiguous -
+no background column in either direction.
