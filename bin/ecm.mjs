@@ -443,6 +443,18 @@ const MAIN = String.raw`
     cam.transform.anchorPoint.setValue([540, 960]);
     var CAM = CAMS[j % 3];
     animate(cam.transform.scale, cam.startTime, cam.outPoint, CAM.s0, CAM.s1, 'calm');
+    // Drift: a slow breath on camRoot's scale, which nothing else uses, so it multiplies the
+    // push instead of fighting it. 1.5 % over a 2.4 s period - enough to feel alive, not enough
+    // to read as a zoom.
+    var ds = camRoot.transform.scale, d0 = cam.startTime, d1 = cam.outPoint, period = 2.4;
+    for (var dk = 0; dk <= (d1 - d0) + 0.001; dk += 0.6) {
+      // Never below 100: during a whip the outgoing and incoming scenes have different
+      // camRoots, and a scene scaled under 100 % would leave a gap at the seam.
+      var dv = 100 + 0.75 * (1 - Math.cos(2 * Math.PI * dk / period));
+      ds.setValueAtTime(Math.min(d0 + dk, d1), [dv, dv]);
+    }
+    // Land on 100 so a scene never hands a 1.5 % offset to the next one across a transition.
+    ds.setValueAtTime(d1, [100, 100]);
     animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
     // A hard cut lands with weight: a short decaying shake, gone in 0.22 s. Soft transitions
     // already carry their own motion, so they get none.

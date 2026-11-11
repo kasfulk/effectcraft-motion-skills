@@ -999,3 +999,36 @@ The shake is 16 px on a 1080 px frame - a jolt in motion, not a still-frame diff
 | `node --test test/ecm.test.mjs` | 46/46 |
 | `node scripts/smoke-layouts.mjs` | 51/51 |
 | `check` x 3 examples | exit 0 each |
+
+## Verification 21 - camera drift (2026-11-11 17:05)
+
+The reference's last camera move, `drift({period, amount})` - a slow breath. It rides on
+`camRoot`'s scale, which nothing else uses, so it multiplies the push instead of fighting it.
+
+```
+camRoot2 scale: [(2.67, 100.0), (3.27, 100.75), (3.87, 101.5), (4.47, 100.75), (5.07, 100.0), (5.67, 100.75), (6.1, 100.0)]
+```
+
+1.5 % over a 2.4 s period, and it lands on 100 at the layer's outPoint so a scene never hands
+an offset to the next one.
+
+### Two constraints found while building it
+- **Never below 100 %.** A first version used a sine and dipped to 98.5 %. During a whip the
+  outgoing and incoming scenes have different camRoots, so a scene scaled under 100 % is
+  smaller than its neighbour and leaves a gap at the seam. The curve is now
+  `100 + 0.75 * (1 - cos)`, which only ever grows.
+- **Re-measured the whip with drift live** (columns, 0-255, ten 108 px columns):
+
+| time | columns |
+|---|---|
+| 6.00 | 43 38 33 31 **105** 211 212 213 214 214 |
+| 6.08 | 33 30 **172** 211 212 214 214 214 216 218 |
+| 6.15 | 39 **209** 212 213 214 214 214 217 218 221 |
+
+No background column at any point - the seam stays covered.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
