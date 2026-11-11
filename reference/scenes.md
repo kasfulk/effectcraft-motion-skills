@@ -307,11 +307,14 @@ Every scene layer in `Main` gets a slow camera move across its whole span, so no
 
 | `j % 5` | Move |
 |---|---|
-| 0 | push in `104% → 112%`, drift right to `(576, 936)` |
-| 1 | pull out `112% → 104%`, drift left to `(504, 984)` |
+| 0 | push in `104% → 112%`, drift right to `(574, 936)` |
+| 1 | pull out `112% → 106%`, drift left to `(506, 984)` |
 | 2 | push in `106% → 112%`, crane up to `(540, 912)` |
-| 3 | pull out `112% → 106%`, drift right to `(566, 960)` |
+| 3 | pull out `112% → 107%`, drift right to `(566, 960)` |
 | 4 | orbit the centre on a 12 px circle |
+
+The pan is capped to the slack the move actually has, so a pull-out cannot outrun its own
+coverage: `cap = 540 * (netMin - 1) * 0.9`, which is 34 px at the 107 % floor.
 
 6% is the floor: below that the move is invisible on a phone. The move scales the precomp, so content must stay inside `SAFE` — at 112% the frame crops 58 px horizontally and 103 px vertically, and the drift stays inside that margin.
 
@@ -332,7 +335,9 @@ The camera is two nulls, one property per level, so nothing overwrites anything:
 
 ### Headroom
 
-The engine fits each scene precomp to exactly 100 % net coverage, which leaves no slack at all: with `cam` at 106 % and the layer auto-fitted to `100/106`, a 16 px shake blacked out all four edges and a 12 px orbit did the same. `bin/ecm.mjs` therefore multiplies the fitted layer scale by `1.08` after `layers.add`, which buys ~43 px — enough for the shake and the orbit together.
+The engine fits each scene precomp to exactly 100 % net coverage, which leaves no slack at all: with `cam` at 106 % and the layer auto-fitted to `100/106`, a 16 px shake blacked out all four edges and a 12 px orbit did the same.
+
+`bin/ecm.mjs` therefore multiplies the fitted layer scale by `1.07 * s0 / min(s0, s1)` after `layers.add`. Keying off the **smallest** scale matters: a pull-out ends at its lowest coverage, which is also where its pan is widest. A flat 1.08 left a `112 → 104` pull-out at 100.3 % net at the end, and its 36 px pan opened a 27 px black band down the right edge.
 
 Budget the slack before adding another camera offset:
 
@@ -340,7 +345,7 @@ Budget the slack before adding another camera offset:
 slack = 1080 * (netScale / 100 - 1) / 2
 ```
 
-8 % of headroom is 43 px horizontally and 77 px vertically. `SAFE` starts 90 px in, so the extra zoom never crops content.
+107 % is 38 px horizontally and 67 px vertically. `SAFE` starts 90 px in, so the extra zoom never crops content.
 
 ## Duration and hold
 

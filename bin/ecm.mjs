@@ -351,9 +351,9 @@ const MAIN = String.raw`
   // camera moves cycled by scene: [scale from, scale to, pan from, pan to]
   var CAMS = [
     {s0:[104,104], s1:[112,112], p0:[540,960], p1:[576,936]},  // push in, drift right
-    {s0:[112,112], s1:[104,104], p0:[540,960], p1:[504,984]},  // pull out, drift left
+    {s0:[112,112], s1:[106,106], p0:[540,960], p1:[504,984]},  // pull out, drift left
     {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,912]},  // push in, crane up
-    {s0:[112,112], s1:[106,106], p0:[540,960], p1:[566,960]},  // pull out, drift right
+    {s0:[112,112], s1:[107,107], p0:[540,960], p1:[566,960]},  // pull out, drift right
     {s0:[106,106], s1:[112,112], p0:[540,960], p1:[540,960], orbit:{radius:12}}  // orbit the centre
   ];
   var pre = [], starts = [], settle = [], finalDurs = DURS.slice(), trans = [], at = 0, seen = {};
@@ -468,7 +468,14 @@ const MAIN = String.raw`
       }
       op.setValueAtTime(d1, [540, 960]);
     } else {
-      animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0, CAM.p1, 'calm');
+      // Cap the pan to the slack it actually has, so a pull-out cannot outrun its own coverage.
+      var netMin = 1.07, capX = 540 * (netMin - 1) * 0.9, capY = 960 * (netMin - 1) * 0.9;
+      function capped(v, base, cap) {
+        var d = v - base;
+        return Math.abs(d) > cap ? base + (d < 0 ? -cap : cap) : v;
+      }
+      animate(cam.transform.position, cam.startTime, cam.outPoint, CAM.p0,
+        [capped(CAM.p1[0], 540, capX), capped(CAM.p1[1], 960, capY)], 'calm');
     }
     // A hard cut lands with weight: a short decaying shake, gone in 0.22 s. Soft transitions
     // already carry their own motion, so they get none.
@@ -486,9 +493,10 @@ const MAIN = String.raw`
     l.parent = cam;
     // The engine fits the precomp to exactly 100 % net coverage, so at scene start there is no
     // slack at all and any camera offset exposes comp background - a 16 px shake blacked out
-    // all four edges. 8 % more buys 43 px, which covers the shake (16 px) and the orbit (12 px)
-    // together. SAFE starts 90 px in, so the extra zoom stays inside it.
-    var fit = l.transform.scale.value[0] * 1.08;
+    // all four edges. The headroom is keyed off the SMALLEST scale the move reaches, not the
+    // first: a pull-out that ends at a lower scale has its least coverage at the end, which is
+    // also where its pan is widest. 1.07 keeps net at 107 % throughout, 38 px of slack.
+    var fit = l.transform.scale.value[0] * (1.07 * CAM.s0[0] / Math.min(CAM.s0[0], CAM.s1[0]));
     l.transform.scale.setValue([fit, fit]);
     l.startTime = st - ov; l.outPoint = st + finalDurs[j];
     layers.push(l);

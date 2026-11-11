@@ -1126,3 +1126,59 @@ at 6.23 on a light, fully-visible frame:
 
 13 px of measured movement on the title — the shake reads. Edges at 6.10/6.22/6.40 are
 `211/9 211/9 209/2 194/2`: content everywhere, no exposure.
+
+## Verification 24 - a pull-out was still exposing (2026-11-11 18:45)
+
+The 8 % headroom from Verification 23 was keyed off the scene's **first** scale. A pull-out ends
+at its lowest scale, which is also where its pan is widest, so it ran out of coverage while the
+camera was still moving.
+
+`examples/all-scenes.json` scene 2 (`kinetic`, move 1 `112 → 104`, pan `540 → 504`):
+
+| measurement | value |
+|---|---|
+| layer fit | `96.43 %` = `100/112 × 1.08` |
+| net at scene end | `96.43 × 104/100` = **100.3 %** |
+| slack at scene end | 1.6 px |
+| pan at scene end | 36 px |
+| black band at t=6.0 | **27 px right, 8 px top** |
+
+### Fix
+- Headroom now keys off the smallest scale: `fit × 1.07 × s0 / min(s0, s1)`, which holds net at
+  107 % throughout — 38 px horizontal, 67 px vertical.
+- The pan is capped to the slack it actually has:
+  `cap = 540 × (netMin − 1) × 0.9` → 34 px.
+- The two pull-out ranges were softened (`112 → 106` and `112 → 107`). At `112 → 104` the start
+  crop would have been 88 px against a 90 px `SAFE` margin — content touching the frame edge.
+
+Resulting keys on `examples/all-scenes.ecproj`:
+
+```
+cam1  pan 540→574 (34, capped)   scale 104→112
+cam2  pan 540→506 (34, capped)   scale 112→106   layer fit 100.94 = 107/106
+cam4  pan 540→566 (26)           scale 112→107
+```
+
+### Edge sweep, all-scenes (2 px strips, mean/std)
+
+| t | L | R | T | B |
+|---|---|---|---|---|
+| 1.0 | 167/81 | 167/81 | 210/2 | 194/3 |
+| 3.0 | 213/8 | 213/8 | 211/3 | 196/3 |
+| 5.0 | 212/9 | 211/8 | 208/2 | 194/3 |
+| 6.0 | 212/9 | 210/8 | 208/2 | 195/2 |
+| 6.3 | 37/2 | 37/2 | 38/2 | 35/2 |
+| 9.0 | 15/2 | 15/2 | 14/2 | 14/2 |
+| 12.0 | 211/9 | 212/9 | 209/2 | 194/3 |
+| 15.0 | 15/2 | 15/2 | 14/2 | 13/2 |
+| 18.0 | 211/9 | 211/9 | 209/2 | 193/3 |
+| 21.0 | 212/8 | 214/9 | 212/3 | 195/3 |
+
+Black band at t=6.0: **0 px** on both edges. The dark readings at 6.3/9.0/15.0 are those scenes'
+own backgrounds — the corner pixel at 10.0/13.0 is `srgb(200,44,30)`, the theme accent.
+
+| Gate | Result |
+|---|---|
+| `node --test test/ecm.test.mjs` | 46/46 |
+| `node scripts/smoke-layouts.mjs` | 51/51 |
+| `check` x 3 examples | exit 0 each |
