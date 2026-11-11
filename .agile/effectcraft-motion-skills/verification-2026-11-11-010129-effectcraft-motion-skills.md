@@ -563,3 +563,17 @@ Every comp had a 180° shutter and 16 samples, but all 499 layers had `motion_bl
 | Unit suite green | `node --test test/ecm.test.mjs` | 46/46 pass |
 | Strict lint clean | `node bin/ecm.mjs check examples/hemat.json --strict` | exit 0 |
 | Full render works | `node bin/ecm.mjs render examples/all-scenes.json` | exit 0, 39.83 s MP4 |
+
+---
+
+# Verification 3 — visual legibility (2026-11-11 11:20)
+
+| Criterion | Command | Observed |
+|---|---|---|
+| Orbit bodies visible on accent bg | `render-frame --comp S6_orbit` | 6 inner + 10 outer dots in ink around "Kamu" |
+| Zoom grid is a grid, not a row | `render-frame --comp S10_zoom --time 1.3` | 3×3 dots around the centre dot |
+| Zoom rings fill the frame | `render-frame --comp S10_zoom` (settled) | three concentric rings, 90/170/250 radius |
+| Dial value not struck by the needle | `render-frame --comp S5_dial --time 2.0` | "18" above the centre dot, needle clear |
+| No regression | `node --test test/ecm.test.mjs` | 46/46 pass |
+| No regression | `node scripts/smoke-layouts.mjs` | 50/50 cases build |
+| Examples still valid | `check` on hemat / all-scenes / motion-gallery | exit 0 each |

@@ -56,3 +56,19 @@ produced a 39.8 s h264 MP4.
 
 Accepted as-is: markers/badges entering at `[70,70]` without an opacity ramp — deliberate pop-in
 on already-visible content, not a correctness issue.
+
+## Visual pass — 2026-11-11 11:05–11:20
+
+After the build-correctness gate, the gallery sheet showed the new graphic scenes were
+technically valid but visually dead. Three defects, all colour/layout, all fixed in `2fa4402`:
+
+- `orbit` drew its bodies and centre dot in `theme.colors.accent`. On `bg:"accent"` scenes that
+  is accent-on-accent: the panel showed two empty rings. Now uses the scene text colour
+  (`onColor` picks base or ink against the actual background).
+- `zoom` had the same accent problem, and its grid level capped `gCols` at 8, so `n:9` laid out
+  as 8 dots in a row plus one. Now `ceil(sqrt(n))` columns, larger cells and ring radii.
+- `dial` placed the value at `cy-30`, directly under the needle, so "18" was struck through.
+  Moved to `cy-120`.
+
+Verified: 46/46 tests, 50/50 smoke cases, `check` exit 0 on hemat / all-scenes / motion-gallery,
+and frames inspected for orbit, zoom grid, zoom rings and dial.
