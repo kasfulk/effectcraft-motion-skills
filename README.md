@@ -53,6 +53,7 @@ Referensi:
 - [CLI dan pitfall](reference/cli.md)
 - [Craft, story shapes and pacing](reference/craft.md)
 - [Sound: bed and sfx rules](reference/sound.md)
+- [3D models](reference/3d.md)
 - [Cold-reader review of the contact sheet](reference/review.md)
 - [Platform notes: macOS + Linux](PLATFORM-NOTES.md)
 

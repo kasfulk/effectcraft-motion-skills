@@ -13,7 +13,7 @@
 
 | field | required? | type | limits | notes |
 |---|---|---|---|---|
-| `type` | yes | string | One of `hook`, `kinetic`, `stat`, `bars`, `donut`, `steps`, `compare`, `quote`, `outro`, `counter`, `dotgrid`, `dial`, `orbit`, `cards`, `timeline`, `particles`, `zoom`, `custom` | Unknown values produce `type unknown`. |
+| `type` | yes | string | One of `hook`, `kinetic`, `stat`, `bars`, `donut`, `steps`, `compare`, `quote`, `outro`, `counter`, `dotgrid`, `dial`, `orbit`, `cards`, `timeline`, `particles`, `zoom`, `model`, `custom` | Unknown values produce `type unknown`. |
 | `title` | no | string | String when present | Used by scene layouts that support a title. |
 | `bg` | no | string | `base`, `ink` or `accent` | Default is the theme base color. |
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
@@ -199,6 +199,21 @@ compositions instead of the same one three times.
 | `levels[].n` | no | number | Finite | Element count for `grid`/`rings`. |
 | `speed` | no | number | `0.2–3` | Level speed; default `1`. |
 | `holdAt` | no | number | Seconds | Hold per level; default `0.8`. |
+
+## `model`
+
+| field | required? | type | limits | notes |
+|---|---|---|---|---|
+| `src` | yes | string | `.glb`, `.gltf`, `.obj`, `.stl`, `.fbx` | Bare name resolves to `assets/3d/<name>`; a path with `/` resolves relative to the spec. |
+| `scale` | no | number | `1–400` | Uniform percent; default `55` frames a unit-sized model. |
+| `spin` | no | number | `-1440–1440` | Total degrees of Y rotation over the scene, eased; default `0`. `360` is one turn per scene. |
+| `tilt` | no | number | `-90–90` | Static X rotation; default `-22`. |
+| `position` | no | number pair | Comp pixels | Default `[540, 960]`. |
+| `light` | no | number | `0–2000` | Parallel key intensity; default `100`. |
+| `fill` | no | number | `0–2000` | Ambient fill intensity; default `25`. |
+
+The comp switches to Advanced 3D for the whole scene. Model colour travels inside the file
+(`baseColorFactor`), so recolouring means re-exporting. Full detail: [3d.md](3d.md).
 
 ## `custom`
 

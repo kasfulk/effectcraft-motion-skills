@@ -191,6 +191,19 @@ $C script FILE.jsx --empty --save-as $F                    # run AE-style JSX
 
 The generated script uses PostScript font names from `assets/fonts/fonts.json` (e.g. `Inter-Regular`, `BebasNeue-Regular`, `PlayfairDisplay-Bold`, `JetBrainsMono-Regular`). Run `bin/ecm fonts --install` to download any missing font from Google Fonts into `~/Library/Fonts` (Linux: `~/.local/share/fonts`); fonts already installed are skipped. `preview`/`render` verify the theme's fonts against `effectcraft-cli exec text.fonts` and fail with `fonts not installed: ...` if one is missing.
 
+## 3D model layers
+
+Model layers come from `app.project.importFile(new ImportOptions(new File(path)))` followed by `comp.layers.add(item)`. The import returns an item whose `typeName` is `"3D Model"`; adding it to a comp automatically switches `comp.renderer` to `"ADBE Advanced 3d"`.
+
+Lights are added with `comp.layers.addLight(name, point)` and their type is set via `light.lightType = <number>`:
+
+- `4412` — Parallel (key light)
+- `4415` — Ambient (fill light)
+
+Intensity is a plain property: `light.property('Intensity').setValue(n)`.
+
+**Pitfall:** `lightType` is a plain number, not a property object. Do not call `light.property('lightType')`; assign directly to `light.lightType`.
+
 ## Pitfalls (verified)
 
 - Layer 1 is the top of the stack. `moveToEnd()` puts a layer behind the bg, where it is invisible, so use `a.moveAfter(ref)`.

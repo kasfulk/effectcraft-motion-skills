@@ -12,7 +12,7 @@ const FFPROBE_BIN = ["ffprobe", "/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffp
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, muxAudio, FX_NAMES, SLIDE_SIZES, TRANSITIONS } from "../bin/ecm.mjs";
+import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, resolveModelFile, muxAudio, FX_NAMES, SLIDE_SIZES, TRANSITIONS } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
 test("themes: ids and structure", () => {
@@ -464,4 +464,43 @@ test("deck: handle override accepted, unknown fields rejected", () => {
   assert.ok(validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).some((m) => m.startsWith("bg: unknown deck field")), validateDeck({ template: "themed", bg: "#fff", slides: [{ text: "A" }] }, templates).join("; "));
   // existing decks without handle still validate
   assert.deepEqual(validateDeck({ template: "plain", slides: [{ text: "A" }] }, templates), []);
+});
+
+// ---- model scene type ----
+test("model: validate accepts valid model scenes", () => {
+  assert.deepEqual(v([{type:"model", src:"cube.glb"}]), []);
+  assert.deepEqual(v([{type:"model", src:"torus.glb", scale:80, spin:360, tilt:-30, position:[540, 960], light:120, fill:30}]), []);
+});
+
+test("model: validate rejects invalid model scenes", () => {
+  assert.deepEqual(v([{type:"model"}]), ["scene 1 (model): src required"]);
+  assert.deepEqual(v([{type:"model", src:"x.txt"}]), ["scene 1 (model): src must be .glb, .gltf, .obj, .stl, or .fbx"]);
+  assert.deepEqual(v([{type:"model", src:"cube.glb", scale:0}]), ["scene 1 (model): scale must be 1–400"]);
+  assert.deepEqual(v([{type:"model", src:"cube.glb", spin:"fast"}]), ["scene 1 (model): spin must be -1440–1440"]);
+  assert.deepEqual(v([{type:"model", src:"cube.glb", position:[1]}]), ["scene 1 (model): position must be [x, y]"]);
+});
+
+test("model: buildScript injects __src and includes scenes-3d", () => {
+  const spec = {theme:"reel", scenes:[{type:"model", src:"cube.glb"}]};
+  const script = buildScript(spec, reel, [3], SPEC_DIR);
+  assert.ok(script.includes("SCENES_3D"), "script should include SCENES_3D");
+  assert.ok(script.includes("assets/3d/cube.glb"), "script should include resolved path");
+  assert.ok(script.includes("__src"), "script should include __src field");
+});
+
+test("resolveModelFile finds 3d model names", () => {
+  const cube = resolveModelFile("cube.glb", SPEC_DIR);
+  assert.ok(cube && cube.endsWith("assets/3d/cube.glb"), `expected assets/3d/cube.glb, got ${cube}`);
+  const torus = resolveModelFile("torus", SPEC_DIR);
+  assert.ok(torus && torus.endsWith("assets/3d/torus.glb"), `expected assets/3d/torus.glb, got ${torus}`);
+});
+
+test("resolveModelFile returns undefined for missing files", () => {
+  assert.equal(resolveModelFile("missing.glb", SPEC_DIR), undefined);
+  assert.equal(resolveModelFile("subdir/missing.glb", SPEC_DIR), undefined);
+});
+
+test("buildScript throws when model file not found", () => {
+  const spec = {theme:"reel", scenes:[{type:"model", src:"missing.glb"}]};
+  assert.throws(() => buildScript(spec, reel, [3], SPEC_DIR), /cannot find "missing\.glb"/);
 });

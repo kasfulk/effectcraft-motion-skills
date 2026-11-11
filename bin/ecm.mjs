@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom",
-  "counter", "dotgrid", "dial", "orbit", "cards", "timeline", "particles", "zoom"];
+  "counter", "dotgrid", "dial", "orbit", "cards", "timeline", "particles", "zoom", "model"];
 
 const FPS = 30;
 const RENDER_LOCK = "/tmp/ecm-render.lock";
@@ -159,6 +159,21 @@ function sceneErrors(s) {
       if (!(Array.isArray(s.levels) && s.levels.length >= 1 && s.levels.length <= 5
         && s.levels.every((l) => plainObj(l) && str(l.label) && ["dot", "grid", "rings"].includes(l.kind)))) e.push("levels must be 1–5 of {label, kind: dot|grid|rings, n?}");
       break;
+    case "model": {
+      const MODEL_EXTS = [".glb", ".gltf", ".obj", ".stl", ".fbx"];
+      if (!str(s.src)) e.push("src required");
+      else {
+        const ext = extname(s.src).toLowerCase();
+        if (!MODEL_EXTS.includes(ext)) e.push(`src must be .glb, .gltf, .obj, .stl, or .fbx`);
+      }
+      if (s.scale !== undefined && !(Number.isFinite(s.scale) && s.scale >= 1 && s.scale <= 400)) e.push("scale must be 1–400");
+      if (s.spin !== undefined && !(Number.isFinite(s.spin) && s.spin >= -1440 && s.spin <= 1440)) e.push("spin must be -1440–1440");
+      if (s.tilt !== undefined && !(Number.isFinite(s.tilt) && s.tilt >= -90 && s.tilt <= 90)) e.push("tilt must be -90–90");
+      if (s.position !== undefined && !(Array.isArray(s.position) && s.position.length === 2 && s.position.every(Number.isFinite))) e.push("position must be [x, y]");
+      if (s.light !== undefined && !(Number.isFinite(s.light) && s.light >= 0 && s.light <= 2000)) e.push("light must be 0–2000");
+      if (s.fill !== undefined && !(Number.isFinite(s.fill) && s.fill >= 0 && s.fill <= 2000)) e.push("fill must be 0–2000");
+      break;
+    }
   }
   if (s.layout !== undefined) {
     const allowed = LAYOUTS[s.type];
@@ -374,7 +389,7 @@ const MAIN = String.raw`
         entered = fn(c, THEME, scene, dur);
         if (typeof entered !== 'number') entered = 0.6 * dur;
       } else {
-        var builder = SCENES[type] || (typeof SCENES_EXTRA !== 'undefined' ? SCENES_EXTRA[type] : undefined);
+        var builder = SCENES[type] || (typeof SCENES_EXTRA !== 'undefined' ? SCENES_EXTRA[type] : undefined) || (typeof SCENES_3D !== 'undefined' ? SCENES_3D[type] : undefined);
         if (!builder) throw new Error('unsupported scene type');
         entered = builder(c, THEME, scene, dur);
       }
@@ -533,9 +548,18 @@ const MAIN = String.raw`
 
 const readLib = (rel) => { try { return read(rel); } catch { return ""; } };
 
-export function buildScript(spec, theme, durs) {
+export function buildScript(spec, theme, durs, specDir) {
+  // Inject __src for model scenes without mutating the caller's spec
+  const specCopy = { ...spec, scenes: spec.scenes.map((s, i) => {
+    if (s.type === "model" && s.src) {
+      const abs = resolveModelFile(s.src, specDir || process.cwd());
+      if (!abs) throw new Error(`scene ${i + 1} (model): cannot find "${s.src}" (looked in assets/3d and next to the spec)`);
+      return { ...s, __src: abs };
+    }
+    return s;
+  })};
   return [
-    `var SPEC = ${json(spec)};`,
+    `var SPEC = ${json(specCopy)};`,
     `var THEME = ${json(theme)};`,
     `var DURS = ${json(durs)};`,
     `var LAYOUTS = ${json(LAYOUTS)};`,
@@ -547,6 +571,7 @@ export function buildScript(spec, theme, durs) {
     readLib("../lib/transitions.jsx"),
     readLib("../lib/scenes.jsx"),
     readLib("../lib/scenes-extra.jsx"),
+    readLib("../lib/scenes-3d.jsx"),
     MAIN,
   ].join("\n");
 }
@@ -946,6 +971,20 @@ export function resolveSfxFile(name, specDir) {
   return resolve(specDir, name);
 }
 
+const MODEL_EXTS = [".glb", ".gltf", ".obj", ".stl", ".fbx"];
+const modelDir = () => new URL("../assets/3d/", import.meta.url).pathname;
+
+// name resolves to assets/3d/<name> or assets/3d/<name>.glb, else spec-relative path
+export function resolveModelFile(name, specDir) {
+  if (typeof name !== "string" || name.trim() === "") return undefined;
+  if (name.includes("/")) { const p = resolve(specDir, name); return existsSync(p) ? p : undefined; }
+  const dir = modelDir();
+  const base = join(dir, name);
+  if (existsSync(base)) return base;
+  for (const ext of MODEL_EXTS) if (existsSync(base + ext)) return base + ext;
+  return undefined;
+}
+
 const sfxGainOk = (g) => g === undefined || (Number.isFinite(g) && g >= -40 && g <= 0);
 
 // pure: [{file, at, gain, label}] with absolute times; throws Error on bad input
@@ -1095,7 +1134,7 @@ function preview(file) {
   const base = basename(file, extname(file));
   const tmp = join(mkdtempSync(join(tmpdir(), 'ecm-')), base + '.build.jsx');
   try {
-    writeFileSync(tmp, buildScript(spec, theme, durs));
+    writeFileSync(tmp, buildScript(spec, theme, durs, dirname(file)));
     console.log(`engine  effectcraft-cli script ${tmp} --empty --save-as ${project}`);
     const built = spawnSync('effectcraft-cli', ['script', tmp, '--empty', '--save-as', project], {encoding:'utf8'});
     if (built.status !== 0) { const lines = (built.stderr || built.stdout || '').split(/\r?\n/).filter((x) => /:\d+:\d+: /.test(x)); const msg = lines.length ? lines[lines.length - 1].replace(/^.*?:\d+:\d+: /, '') : ((built.stderr || built.stdout || '').trim() || built.error?.message || 'effectcraft-cli failed to start'); console.error(msg); return {code:1}; }
