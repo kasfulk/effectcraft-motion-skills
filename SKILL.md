@@ -113,6 +113,7 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | Mistake | Instead |
 |---|---|
 | Probing the API by trial, writing JSX | Write a spec; new visual: `custom` + helpers (scenes.md) |
+| Giving a `model` scene a `text`/`title` field | Model scenes are geometry only — caption it from a neighbouring hook/kinetic/outro scene ([3d.md](reference/3d.md)) |
 | Checking 2–3 frames | Read every panel on the sheet |
 | Every scene fixed at 3 s | Omit `duration` |
 | Default font, generic dark bg | Pick a theme |
