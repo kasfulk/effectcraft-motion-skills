@@ -213,6 +213,7 @@ Intensity is a plain property: `light.property('Intensity').setValue(n)`.
 - The text selector Units default is percent. `setValue(2)` switches it to index units.
 - Unknown fonts silently fall back to the engine default (Inter). `preview`/`render` check the theme's fonts against `effectcraft-cli exec text.fonts` before building, so a missing font fails fast instead of rendering in the wrong face.
 - The montage default label font may be missing; `ecm.mjs` picks a label font itself (Helvetica on macOS, DejaVu Sans on Linux) and drops `-font` if neither exists.
+- ImageMagick 6 (Debian/Ubuntu default) has no `magick` shim: `ecm.mjs` calls `convert`/`montage` directly when `magick` is absent.
 - `sourceRectAtTime` reports stroked shapes about 13 px wider per side.
 - A static opacity is overwritten by any later keyed animation that starts from a hard-coded value.
 - CLI errors appear as `file:line:col: message` on stderr.

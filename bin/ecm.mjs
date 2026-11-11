@@ -742,7 +742,7 @@ function slides(file, outArg) {
       const png = join(outDir, String(i + 1).padStart(2, "0") + ".png");
       const r = spawnSync("effectcraft-cli", ["render-frame", "--project", project, "--comp", "P" + (i + 1), "--time", "1.8", "--out", png], { encoding: "utf8" });
       if (r.status !== 0) { console.error((r.stderr || r.stdout || "").trim() || r.error?.message || "effectcraft-cli failed to start"); return 1; }
-      const check = spawnSync("magick", [png, "-colorspace", "gray", "-format", "%[fx:standard_deviation]", "info:"], { encoding: "utf8" });
+      const check = im(null, [png, "-colorspace", "gray", "-format", "%[fx:standard_deviation]", "info:"]);
       const deviation = Number((check.stdout || "").trim());
       if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`slide ${i + 1}: blank check failed: ${(check.stderr || "").trim() || "magick failed"}`); return 1; }
       if (deviation < 0.004) { console.error(`slide ${i + 1}: renders blank`); return 1; }
@@ -955,6 +955,12 @@ function resolveBin(name, fallbacks) {
   }
   return fallbacks.find((p) => existsSync(p)) || name;
 }
+// ImageMagick 7 ships "magick"; Debian/Ubuntu's IM6 ships "convert" and "montage" only.
+const MAGICK = resolveBin("magick", ["/opt/homebrew/bin/magick", "/usr/local/bin/magick"]);
+function im(sub, args) {
+  if (MAGICK !== "magick") return spawnSync(MAGICK, sub ? [sub, ...args] : args, { encoding: "utf8" });
+  return spawnSync(sub || "convert", args, { encoding: "utf8" });
+}
 const FFMPEG = resolveBin("ffmpeg", ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"]);
 const FFPROBE = resolveBin("ffprobe", ["/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffprobe", "/usr/bin/ffprobe"]);
 const AUDIO_EXT = /\.(wav|m4a|mp3|ogg)$/i;
@@ -1148,7 +1154,7 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
       const pre = Math.max(ov + 0.05, Math.min(t[i] + 0.25, ds[i] - ov - 0.1));
       const time = starts[i] - ov + Math.max(0.05, pre), r = spawnSync('effectcraft-cli', ['render-frame', '--project', project, '--comp', 'Main', '--time', String(time), '--max-side', '480', '--out', frames[i]], {encoding:'utf8'});
       if (r.status !== 0) { console.error((r.stderr || r.stdout || '').trim() || r.error?.message || 'effectcraft-cli failed to start'); return {code:1}; }
-      const check = spawnSync('magick', [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:'], {encoding:'utf8'});
+      const check = im(null, [frames[i], '-colorspace', 'gray', '-format', '%[fx:standard_deviation]', 'info:']);
       const deviation = Number((check.stdout || '').trim());
       if (check.status !== 0 || !Number.isFinite(deviation)) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): blank check failed: ${(check.stderr || '').trim() || check.error?.message || 'magick failed'}`); return {code:1}; }
       if (deviation < 0.004) { console.error(`scene ${i + 1} (${spec.scenes[i].type}): renders blank at ${time}s`); return {code:1}; }
@@ -1157,7 +1163,7 @@ ${built.stderr || ''}`.split(/\r?\n/).find((x) => x.startsWith('ECM '));
     // ponytail: no -font at all if neither exists (labels fall back to magick default).
     const labelFont = ['/System/Library/Fonts/Helvetica.ttc', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
       .find((f) => existsSync(f));
-    const montage = spawnSync('magick', ['montage', ...(labelFont ? ['-font', labelFont] : []), ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
+    const montage = im('montage', [...(labelFont ? ['-font', labelFont] : []), ...frames.flatMap((f) => ['-label', '%t', f]), '-tile', '5x', '-geometry', '+8+8', sheet], {encoding:'utf8'});
     if (montage.status !== 0) { console.error((montage.stderr || montage.stdout || '').trim() || montage.error?.message || 'magick montage failed'); return {code:1}; }
     for (const f of frames) rmSync(f, {force:true});
     console.log(sheet);

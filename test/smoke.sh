@@ -117,7 +117,9 @@ printf '%s\n' '{"template":"themed","slides":[{"text":"Tiga hal yang membuat car
 "$ROOT/bin/ecm" slides "$TMP/deck.json" --out "$TMP/deck-out" >"$TMP/deck.out" 2>"$TMP/deck.err"
 test -f "$TMP/deck-out/01.png"
 test -f "$TMP/deck-out/02.png"
-test "$(magick identify -format '%wx%h' "$TMP/deck-out/01.png")" = '1080x1440'
+# ImageMagick 7 has "magick identify"; Debian/Ubuntu IM6 only has "identify".
+identify_cmd=identify; command -v magick >/dev/null 2>&1 && identify_cmd="magick identify"
+test "$($identify_cmd -format '%wx%h' "$TMP/deck-out/01.png")" = '1080x1440'
 set +e
 printf '%s\n' '{"template":"themed","slides":[{"text":"Halo dunia","emphasis":"hilang"}]}' > "$TMP/deck-bad-emphasis.json"
 "$ROOT/bin/ecm" slides "$TMP/deck-bad-emphasis.json" --out "$TMP/deck-bad" >"$TMP/deck-bad.out" 2>"$TMP/deck-bad.err"

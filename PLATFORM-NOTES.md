@@ -15,8 +15,10 @@ Never call `node bin/ecm.mjs` directly — you lose the priority handling.
 ## Binary resolution
 
 `bin/ecm.mjs` resolves `ffmpeg`/`ffprobe` from `PATH` first, then falls back to
-`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`. `effectcraft-cli` and `magick` are
-expected on `PATH`.
+`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`. `effectcraft-cli` is expected on `PATH`.
+
+ImageMagick works either way: version 7 (`magick`, plus `magick montage`) or the IM6 that
+ships with Debian/Ubuntu (`convert`, `montage`, `identify`). The code picks whichever exists.
 
 ## Fonts
 

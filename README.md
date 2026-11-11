@@ -6,7 +6,7 @@ Skill untuk mengubah spec JSON menjadi video motion graphics 9:16 berbentuk MP4 
 
 - `effectcraft-cli` (di `PATH`)
 - Node.js ≥ 20
-- ImageMagick 7 (`magick` di `PATH`)
+- ImageMagick 7 (`magick`) atau IM6 bawaan Ubuntu (`convert`/`montage`), di `PATH`
 - `ffmpeg` dan `ffprobe` (di `PATH`; `/opt/homebrew/bin` dipakai sebagai fallback di macOS)
 
 Jalan di macOS dan Linux (Ubuntu/Debian). `bin/ecm` menangani bedanya: prioritas rendah
