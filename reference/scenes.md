@@ -211,6 +211,7 @@ compositions instead of the same one three times.
 | `position` | no | number pair | Comp pixels | Default `[540, 960]`. |
 | `light` | no | number | `0–2000` | Parallel key intensity; default `100`. |
 | `fill` | no | number | `0–2000` | Ambient fill intensity; default `25`. |
+| `fade` | no | boolean | `true`/`false` | 0.35 s opacity fade-in; default `true`, `false` pops the model on at the cut. |
 
 The comp switches to Advanced 3D for the whole scene. Model colour travels inside the file
 (`baseColorFactor`), so recolouring means re-exporting. Full detail: [3d.md](3d.md).
