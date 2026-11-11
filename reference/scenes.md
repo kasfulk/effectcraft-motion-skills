@@ -314,18 +314,19 @@ Every scene layer in `Main` gets a slow camera move across its whole span, so no
 | 4 | orbit the centre on a 12 px circle |
 
 The pan is capped to the slack the move actually has, so a pull-out cannot outrun its own
-coverage: `cap = 540 * (netMin - 1) * 0.9`, which is 34 px at the 107 % floor.
+coverage: `cap = 540 × (netMin − 1) × 0.9`, which is 34 px at the 107 % floor (96 % of true slack).
 
-6% is the floor: below that the move is invisible on a phone. The move scales the precomp, so content must stay inside `SAFE` — at 112% the frame crops 58 px horizontally and 103 px vertically, and the drift stays inside that margin.
+6% is the floor for a **push-in**: below that the move is invisible on a phone. A pull-out cannot
+go that deep — the shallower the end scale, the smaller the pan slack the move has to offer, so
+the pull-outs above sit at 5.7 % and 4.7 % with their pans capped. The move scales the precomp, so content must stay inside `SAFE` — at 112% the frame crops 58 px horizontally and 103 px vertically, and the drift stays inside that margin.
 
 The camera is two nulls, one property per level, so nothing overwrites anything:
 
 | level | carries |
 |---|---|
 | `camRoot` | the impact shake (position) and the drift breath (scale) |
-| scene layer | carries its transition, plus 8 % scale headroom for the offsets above |
 | `cam` | the slow pan and push above |
-| scene layer | its transition |
+| scene layer | its transition, plus the `1.07 × s0 / min(s0, s1)` headroom |
 
 **Shake** fires on `cut` and `dip` entrances only: 16 px on x and 9.6 px on y, decaying to rest in 0.33 s, peaking 0.10 s after the cut so it lands on content rather than on the incoming scene's empty first frames. Transitions that already carry motion (`whip`, `fold`, `zoom`, the wipes) get none.
 
@@ -342,10 +343,12 @@ The engine fits each scene precomp to exactly 100 % net coverage, which leaves n
 Budget the slack before adding another camera offset:
 
 ```
-slack = 1080 * (netScale / 100 - 1) / 2
+slack = 1080 * (1 - 1 / (netScale / 100)) / 2
 ```
 
-107 % is 38 px horizontally and 67 px vertically. `SAFE` starts 90 px in, so the extra zoom never crops content.
+107 % is 35 px horizontally and 63 px vertically — not `540 × (net − 1)` (38 px), which overstates
+the margin because the visible window shrinks by the reciprocal, not by the delta. The pan cap
+`(netMin − 1) × 0.9 × 540` = 34 px is therefore 96 % of true slack, not 90 %. `SAFE` starts 90 px in, so the extra zoom never crops content.
 
 ## Duration and hold
 

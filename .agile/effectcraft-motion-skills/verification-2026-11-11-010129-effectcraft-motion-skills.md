@@ -1201,3 +1201,27 @@ nothing stale was committed. After `node bin/ecm.mjs preview examples/motion-gal
 layer reads `100.94` (= 107/106) and the sweep is clean.
 
 Lesson: `.ecproj` is a build artifact - always rebuild from the `.json` spec before measuring.
+
+## Verification 26 - full-video sweep and doc consistency (2026-11-11 19:40)
+
+Rendered `motion-gallery.mp4` and `hemat.mp4` from the rebuilt ecprojs and swept the encoded
+videos (not just renderer frames) every 0.4 s:
+
+| video | frames | flat edges |
+|---|---|---|
+| `mg_final.mp4` | 101 | none |
+| `hm_final.mp4` | 46 | none |
+
+Doc corrections found while re-checking consistency (`reference/scenes.md`):
+- The camera-level table still said "8 % scale headroom" and duplicated the scene-layer row;
+  now records the `1.07 × s0 / min(s0, s1)` headroom at its actual level.
+- The slack formula `540 × (net − 1)` overstated the margin (38 px vs the exact 35 px — the
+  visible window shrinks by the reciprocal, not the delta). Replaced with
+  `1080 × (1 − 1/net) / 2`; the 34 px cap is 96 % of true slack, not 90 %.
+- "6 % is the floor" contradicted the softened pull-outs; clarified it as the push-in floor.
+
+Verified numerically: cap 34 px ≤ true slack 35.3 px; cam2's 48 px vertical pan ≤ 60.5 px capY;
+crop at 112 % net = 57.9 px < SAFE 90 px.
+
+Full-module gates after the doc edits: `node --test test/ecm.test.mjs` 46/46,
+`smoke-layouts` 51/51.
