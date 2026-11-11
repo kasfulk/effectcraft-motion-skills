@@ -49,6 +49,9 @@ test("errors", () => {
   assert.deepEqual(v([{type:"hook", text:"Gaji naik", emphasis:"turun"}]), ["scene 1 (hook): emphasis \"turun\" not found in text"]);
   assert.deepEqual(v([{type:"kinetic", lines:["Gaji naik","tabungan tetap"], emphasis:"naik tabungan"}]), ["scene 1 (kinetic): emphasis \"naik tabungan\" not found in any line"]);
   assert.deepEqual(v([{type:"hook", text:"Hai", bg:"red"}]), ["scene 1 (hook): bg must be base|ink|accent"]);
+  // "table" was accepted but had no branch and silently rendered as stack
+  assert.deepEqual(v([{type:"compare", left:{title:"A",points:["x"]}, right:{title:"B",points:["y"]}, layout:"table"}]), ['scene 1 (compare): layout: unknown "table" for compare (stack|split)']);
+  assert.deepEqual(v([{type:"compare", left:{title:"A",points:["x"]}, right:{title:"B",points:["y"]}, layout:"split"}]), []);
   assert.deepEqual(validate({theme:"reel", out:"clip.mov", scenes:[{type:"hook", text:"Hai"}]}, T), ["out: must be a .mp4 path"]);
 });
 test("fx: names validated at spec and scene level", () => {

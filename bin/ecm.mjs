@@ -24,7 +24,7 @@ export const LAYOUTS = {
   bars: ["vertical", "horizontal", "race", "lollipop"],
   donut: ["ring", "gauge", "multi"],
   steps: ["list", "timeline", "cards"],
-  compare: ["stack", "split", "table"],
+  compare: ["stack", "split"],
   outro: ["center", "pill", "handle"]
 };
 export const FX_NAMES = ["grid", "liquid", "paper", "grain", "vignette", "glow", "rgbIn", "blurIn", "sweep", "float", "glitch"];
