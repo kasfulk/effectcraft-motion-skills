@@ -21,7 +21,22 @@
 | `atmosphere` | no | string | `none`, `glow`, `grain`, `full` | Overrides the theme's `motion.atmosphere` for this scene. |
 | `elements` | no | string array | Names from `flash`, `rays`, `fog`, `particles`, `cracks`, `lightning`, `fire`, `water` | Decorative elements layered over the scene. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
+| `layout` | no | string | Per type, see below | Overrides the theme's `layouts[type]`. Unknown values error and list the valid ones. |
 | `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
+
+Valid `layout` values, and the default when neither the scene nor the theme sets one:
+
+| type | layouts | default |
+|---|---|---|
+| `hook` | `center`, `split`, `bottom` | `center` |
+| `kinetic` | `slide`, `mask`, `stagger`, `morph`, `world` | `slide` |
+| `quote` | `center`, `rule`, `card` | `center` |
+| `stat` | `center`, `left`, `split`, `ring` | `center` |
+| `bars` | `vertical`, `horizontal`, `race`, `lollipop` | `vertical` |
+| `donut` | `ring`, `gauge`, `multi` | `ring` |
+| `steps` | `list`, `timeline`, `cards` | `list` |
+| `compare` | `stack`, `split` | `stack` |
+| `outro` | `center`, `pill`, `handle` | `center` |
 
 ## `hook`
 
