@@ -639,3 +639,15 @@ node -e 'const T=require("./themes.json"),F=require("./assets/fonts/fonts.json")
 
 Every `colors.*` value is a six-digit hex (the `#fff` NaN path is unreachable from shipped themes)
 and every `fonts.*` value is a key of `assets/fonts/fonts.json`.
+
+## Verification 6 — hemat re-render (2026-11-11 11:28)
+
+`examples/hemat.mp4` predated the counter fix, so its stat scene still carried the ghost.
+
+| Criterion | Command | Observed |
+|---|---|---|
+| No black frame at a cut | `check-cuts.mjs hemat.mp4` over 4 boundaries | no near-black |
+| Counter legible | frame @ 3.4 s | `30%`, one value |
+| Spec valid | `check examples/hemat.json` | exit 0, 5 scenes, 18.37 s |
+
+All three example MP4s are now built from the current code.
