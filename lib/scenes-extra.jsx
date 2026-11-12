@@ -470,8 +470,9 @@ var SCENES_EXTRA = {
     var prevLabel = null;
     for (var i = 0; i < nLevels; i++) {
       var lv = levels[i];
-      var at = 0.2 + i * (holdAt * speed);
-      var end = at + holdAt * speed;
+      // speed is a rate: 2 = twice as fast, so it divides the hold (it used to multiply).
+      var at = 0.2 + i * (holdAt / speed);
+      var end = at + holdAt / speed;
       var kind = lv.kind || 'dot';
       var n = lv.n === undefined ? 1 : lv.n;
       if (kind === 'dot') {

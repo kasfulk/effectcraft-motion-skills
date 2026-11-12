@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PRIMITIVES, geometry, glbFor, hexToRgb } from "../lib/glb.mjs";
 
 // A GLB the engine silently renders as an inverted crescent still parses fine, so these
@@ -89,4 +94,16 @@ test("colour tint reaches the material", () => {
 
 test("unknown primitives are rejected instead of emitting an empty mesh", () => {
   assert.throws(() => geometry("dodecahedron"), /unknown/i);
+});
+
+// Every harness installs the skill as a symlink; the CLI used to exit 0 there without writing.
+test("CLI writes the file when run through a symlinked install", () => {
+  const dir = mkdtempSync(join(tmpdir(), "glb-link-"));
+  try {
+    symlinkSync(fileURLToPath(new URL("..", import.meta.url)), join(dir, "link"));
+    const out = join(dir, "s.glb");
+    const r = spawnSync(process.execPath, [join(dir, "link/lib/glb.mjs"), "sphere", out], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(existsSync(out), "exited 0 without writing the file");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

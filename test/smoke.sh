@@ -45,6 +45,12 @@ grep -F 'scene 1 (steps): text too long' "$TMP/too-long-steps.err"
 printf '%s\n' '{"theme":"reel","scenes":[{"type":"compare","bg":"ink","left":{"title":"Before","points":["One","Two","Three"]},"right":{"title":"After","points":["Four","Five","Six"]}}]}' > "$TMP/compare-ink.json"
 "$ROOT/bin/ecm" preview "$TMP/compare-ink.json" >"$TMP/compare-ink.out" 2>"$TMP/compare-ink.err"
 test -f "$TMP/compare-ink.sheet.png"
+# Ambient elements must not push the settle point past an explicit duration.
+printf '%s\n' '{"theme":"kinetik","scenes":[{"type":"kinetic","lines":["Satu","Dua"],"duration":10,"elements":["rays"]}]}' > "$TMP/elem-dur.json"
+"$ROOT/bin/ecm" preview "$TMP/elem-dur.json" >"$TMP/elem-dur.out" 2>"$TMP/elem-dur.err"
+# zoom speed is a rate: speed 2 fits four levels in 4 s.
+printf '%s\n' '{"theme":"kinetik","scenes":[{"type":"zoom","levels":[{"label":"A","kind":"rings","n":2},{"label":"B","kind":"rings","n":3},{"label":"C","kind":"rings","n":4},{"label":"D","kind":"dot"}],"speed":2,"duration":4}]}' > "$TMP/zoom-speed.json"
+"$ROOT/bin/ecm" preview "$TMP/zoom-speed.json" >"$TMP/zoom-speed.out" 2>"$TMP/zoom-speed.err"
 printf '%s\n' '{"theme":"pitch","scenes":[{"type":"steps","title":"Judul","items":["a","b"],"bg":"ink"}]}' > "$TMP/steps-ink-title.json"
 "$ROOT/bin/ecm" preview "$TMP/steps-ink-title.json" >"$TMP/steps-ink-title.out" 2>"$TMP/steps-ink-title.err"
 test -f "$TMP/steps-ink-title.sheet.png"
