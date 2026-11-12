@@ -478,6 +478,8 @@ test("model: validate rejects invalid model scenes", () => {
   assert.deepEqual(v([{type:"model", src:"cube.glb", scale:0}]), ["scene 1 (model): scale must be 1–400"]);
   assert.deepEqual(v([{type:"model", src:"cube.glb", spin:"fast"}]), ["scene 1 (model): spin must be -1440–1440"]);
   assert.deepEqual(v([{type:"model", src:"cube.glb", position:[1]}]), ["scene 1 (model): position must be [x, y]"]);
+  // Text on a model scene never renders; accepting it silently drops the caption.
+  assert.deepEqual(v([{type:"model", src:"cube.glb", title:"Bumi"}]), ["scene 1 (model): model scenes render no text (title); caption it in a neighbouring hook/kinetic scene"]);
 });
 
 test("model: buildScript injects __src and includes scenes-3d", () => {

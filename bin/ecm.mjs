@@ -173,6 +173,7 @@ function sceneErrors(s) {
       if (s.position !== undefined && !(Array.isArray(s.position) && s.position.length === 2 && s.position.every(Number.isFinite))) e.push("position must be [x, y]");
       if (s.light !== undefined && !(Number.isFinite(s.light) && s.light >= 0 && s.light <= 2000)) e.push("light must be 0–2000");
       if (s.fill !== undefined && !(Number.isFinite(s.fill) && s.fill >= 0 && s.fill <= 2000)) e.push("fill must be 0–2000");
+      for (const k of ["title", "text", "label"]) if (s[k] !== undefined) e.push(`model scenes render no text (${k}); caption it in a neighbouring hook/kinetic scene`);
       break;
     }
   }
@@ -399,7 +400,9 @@ const MAIN = String.raw`
       if (!hasContent) throw new Error('renders blank');
       var fxs = (THEME.fx || []).concat(SPEC.fx || [], scene.fx || []);
       entered = Math.max(entered, applyFx(c, THEME, fxs, entered));
-      if (scene.elements && typeof ELEMENTS !== 'undefined') entered = Math.max(entered, ELEMENTS.apply(c, THEME, scene.elements, {dur: dur}));
+      // Elements are ambient decor (rays/fire/water span the whole scene by design), so they must
+      // not move the settle point: counting them made any explicit duration unsatisfiable.
+      if (scene.elements && typeof ELEMENTS !== 'undefined') ELEMENTS.apply(c, THEME, scene.elements, {dur: dur});
       if (typeof ATMOSPHERE !== 'undefined' && ATMOSPHERE.overlay) ATMOSPHERE.overlay(c, THEME, {atmosphere: scene.atmosphere});
       // Parallax: the atmosphere is the far plane, so it lags the camera. Without this the pan
       // moves frame and content together and the shot reads as flat.

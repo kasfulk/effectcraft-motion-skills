@@ -71,7 +71,7 @@ Rules:
 Proves a fix changed only its SCOPE.
 
 1. Keep the old sheet (`mv X.sheet.png X.sheet.before.png` or copy it) before editing the spec.
-2. Edit the spec with the Edit tool (never `sed -i`).
+2. Edit the spec with your file-edit tool (never `sed -i`).
 3. Re-`preview`.
 4. Compare the two sheets: every panel OUTSIDE SCOPE must be pixel-identical in layout (same text, same position, same colors). Any panel outside SCOPE that changed = the fix leaked; find what else your edit touched.
 

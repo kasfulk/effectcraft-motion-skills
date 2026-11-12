@@ -19,7 +19,7 @@
 | `duration` | no | number | `1–15` | Seconds; explicit durations are not scaled. |
 | `fx` | no | string array | Preset names from [fx.md](fx.md) | Also allowed at spec level; both lists apply. |
 | `atmosphere` | no | string | `none`, `glow`, `grain`, `full` | Overrides the theme's `motion.atmosphere` for this scene. |
-| `elements` | no | string array | Names from `flash`, `rays`, `fog`, `particles`, `cracks`, `lightning`, `fire`, `water` | Decorative elements layered over the scene. |
+| `elements` | no | string array | Names from `flash`, `rays`, `fog`, `particles`, `cracks`, `lightning`, `fire`, `water` | Ambient decor layered over the scene; does not extend the scene's settle time. |
 | `emphasis` | no | string | Non-empty string; occurs case-insensitively in main text | Applies to `hook`, `quote`, `outro`, and `kinetic` lines. |
 | `layout` | no | string | Per type, see below | Overrides the theme's `layouts[type]`. Unknown values error and list the valid ones. |
 | `transition` | no | string | `cut` (default), `fade`, `wipe`, `slide`, `dip`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Entrance transition into this scene. Unknown values error. On the first scene it is accepted but ignored. |
@@ -197,7 +197,7 @@ compositions instead of the same one three times.
 | `levels` | yes | object array | `1–5` of `{label, kind, n}` | Zoom levels. |
 | `levels[].kind` | yes | string | `dot`, `grid`, `rings` | Level graphic. |
 | `levels[].n` | no | number | Finite | Element count for `grid`/`rings`. |
-| `speed` | no | number | `0.2–3` | Level speed; default `1`. |
+| `speed` | no | number | `0.2–3` | Rate: `2` plays the levels twice as fast; default `1`. |
 | `holdAt` | no | number | Seconds | Hold per level; default `0.8`. |
 
 ## `model`

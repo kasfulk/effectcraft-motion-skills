@@ -5,7 +5,7 @@ Ported from the reel-skill-chat chain (idea, script, storyboard, build, review, 
 Set once:
 
 ```bash
-E=~/.claude/skills/effectcraft-motion/bin/ecm
+E=ecm   # bin/install puts it on PATH; otherwise <this skill's folder>/bin/ecm
 ```
 
 ## The chain
@@ -86,7 +86,7 @@ Gate: `check --strict` exits 0. A failing check names the scene and the fix; app
 $E preview video.json
 ```
 
-`preview` writes `<basename>.sheet.png` next to the spec: one settled frame per scene, frame at scene settle + 0.25 s. Read the whole sheet with the Read tool. Every panel. Not 2 or 3.
+`preview` writes `<basename>.sheet.png` next to the spec: one settled frame per scene, frame at scene settle + 0.25 s. Look at the whole sheet image yourself with your own image tool (SKILL.md step 3), not through another model's description. Every panel. Not 2 or 3.
 
 Gate: every panel legible at phone size; no blank or lopsided panel; no two panels saying the same thing; every number matches the user's data; the theme/handle is what the user asked for.
 

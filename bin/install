@@ -1,0 +1,28 @@
+#!/bin/sh
+# Link this checkout into every agent harness on the machine, and put `ecm` on PATH.
+# One checkout, many symlinks: a `git pull` here updates every harness at once.
+# Usage: bin/install [extra-skills-dir ...]
+set -e
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+NAME=effectcraft-motion
+
+link() { # $1 = skills dir
+  mkdir -p "$1"
+  if [ -e "$1/$NAME" ] && [ ! -L "$1/$NAME" ]; then
+    echo "skip  $1/$NAME (a real directory, not a link; remove it yourself)"; return
+  fi
+  ln -sfn "$ROOT" "$1/$NAME" && echo "link  $1/$NAME"
+}
+
+# ~/.agents/skills is the shared Agent Skills dir: Codex, Gemini CLI, Cline, OpenCode, omp read it.
+link "$HOME/.agents/skills"
+# Harnesses that only read their own dir; linked only when the harness is installed.
+for pair in .claude:.claude/skills .hermes:.hermes/skills .pi:.pi/agent/skills .kimi:.kimi/skills; do
+  [ -d "$HOME/${pair%%:*}" ] && link "$HOME/${pair#*:}"
+done
+# ponytail: Antigravity/Kimi dirs are unverified here; pass them as arguments until confirmed.
+for d in "$@"; do link "$d"; done
+
+mkdir -p "$HOME/.local/bin"
+ln -sfn "$ROOT/bin/ecm" "$HOME/.local/bin/ecm" && echo "link  $HOME/.local/bin/ecm"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note  add ~/.local/bin to PATH" ;; esac

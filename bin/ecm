@@ -3,7 +3,13 @@
 # macOS: taskpolicy -b nice -n 19 (background QoS). Linux: nice -n 19.
 # Usage: bin/ecm <check|preview|render|themes|slides|new|fonts> ...
 set -e
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Follow symlinks so `ecm` linked onto PATH (bin/install) still finds ecm.mjs.
+SELF=$0
+while [ -L "$SELF" ]; do
+  L=$(readlink "$SELF")
+  case $L in /*) SELF=$L ;; *) SELF=$(dirname -- "$SELF")/$L ;; esac
+done
+DIR=$(CDPATH= cd -- "$(dirname -- "$SELF")" && pwd)
 if [ "$(uname -s)" = "Darwin" ] && command -v taskpolicy >/dev/null 2>&1; then
   exec taskpolicy -b nice -n 19 node "$DIR/ecm.mjs" "$@"
 fi
