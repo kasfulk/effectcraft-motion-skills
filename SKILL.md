@@ -69,7 +69,7 @@ Carousels (deck specs): same loop — write the deck (set `"handle"` to the user
 | model | `src` (+`scale`,`spin`,`tilt`,`position`,`light`,`fill`) | 3D model rendered in Advanced 3D |
 | custom | `jsx` | anything else, via core helpers |
 
-Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md), 3D models: [reference/3d.md](reference/3d.md), free model sources: [reference/3d-sources.md](reference/3d-sources.md), free fonts/SVG/sfx/preset sources: [reference/assets.md](reference/assets.md).
+Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](reference/sound.md), 3D models: [reference/3d.md](reference/3d.md), free model sources: [reference/3d-sources.md](reference/3d-sources.md), free fonts/SVG/sfx/preset sources and how Synfig/Glaxnimate/OpenToonz/Friction/Pencil2D/SVG.js output gets in: [reference/assets.md](reference/assets.md).
 
 **Effects:** `"fx":["grid","rgbIn"]` at spec or scene level, ≤ 1 each. Presets: `grid liquid paper grain vignette glow rgbIn blurIn sweep float glitch`. See [reference/fx.md](reference/fx.md).
 

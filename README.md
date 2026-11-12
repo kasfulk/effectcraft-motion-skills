@@ -54,7 +54,7 @@ Referensi:
 - [Craft, story shapes and pacing](reference/craft.md)
 - [Sound: bed and sfx rules](reference/sound.md)
 - [3D models](reference/3d.md)
-- [Free asset sources: fonts, SVG, 3D, effects, sound](reference/assets.md)
+- [Free asset sources: fonts, SVG, 3D, effects, sound, 2D animation toolkits](reference/assets.md)
 - [Cold-reader review of the contact sheet](reference/review.md)
 - [Platform notes: macOS + Linux](PLATFORM-NOTES.md)
 

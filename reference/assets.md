@@ -13,6 +13,7 @@ Verified 2026-11-11 against `effectcraft-cli`:
 | Font | installed as a system font, PostScript name declared in `assets/fonts/fonts.json`; `bin/ecm fonts --install` downloads **Google Fonts only** | `bin/ecm fonts --install`, `exec text.fonts` |
 | SVG | `edit.pasteSvg` → one **editable vector shape layer** (no raster) | `exec edit.pasteSvg` → `{"layer":2,"skipped":[]}`; `props` → `vectors:yes source:none` |
 | 3D model | `.glb`/`.gltf` only, through a `model` scene | [3d.md](3d.md) |
+| Image sequence | `exec file.import` with `sequence:true` → one `Image Sequence` item, duration = frames ÷ `frameRate`; then `exec layer.addItem` | 3 frames @ 30 fps imported at `frameRate:3` → `{"duration":1.0,"type":"Image Sequence"}`. Omit `frameRate` and a 3-frame run lasts 0.1 s |
 | Effect preset | `.ecpreset` via `anim.applyPreset`; 68 built-in via `anim.applyBuiltinPreset`; `.aep` via `file.importAep`; Lottie via `file.importLottie` | `exec anim.builtinPresets` → 68 |
 | Sound | file under `assets/sfx/` or `assets/sfx/beds/`, referenced by bare name | [sound.md](sound.md) |
 
@@ -104,6 +105,38 @@ Two free layers already exist inside the engine, and they beat every download be
 Saving your own: select the properties, `exec anim.savePreset --params '{"path":"./my.ecpreset"}'`,
 reuse with `anim.applyPreset`. That is the working substitute for the `.ffx` habit.
 
+## 2D animation toolkits (Synfig, Glaxnimate, OpenToonz, Friction, Pencil2D, SVG.js)
+
+None of them is an engine here — the engine is `effectcraft-cli`. They are **asset authors**, and
+there are exactly three ways in: static SVG (`edit.pasteSvg`), Lottie (`file.importLottie`), and
+baked frames (`file.import` `sequence:true`). Engine behaviour verified 2026-11-12 on
+`effectcraft-cli 0.23.0`; the tools' own features verified against their own docs, cited below.
+
+`edit.pasteSvg` flattens motion. An SVG carrying `animate` / `animateTransform` comes back as a
+static shape layer — 78 properties, 0 keyframes — and `<text>` is returned in `skipped`, not drawn.
+So any tool whose output *is* an animated SVG loses its animation on the way in. Lottie does not: a
+real bodymovin export (`lottie-web`'s `adrock`) imports as a 29-layer, 13 s comp and renders
+different pixels at 0, 0.5 and 1 s.
+
+| Tool | What it produces | Route in | Verdict |
+|---|---|---|---|
+| **Glaxnimate** | the odd one out: a Lottie-native vector editor, free, now a KDE app | *opens and saves Lottie natively* ([formats](https://docs.glaxnimate.org/en/formats.html)) → `file.importLottie` | **the right front-end for this pipeline.** Motion arrives as vector, no frames, no rasterizer. Not one of the five you asked about, which is the point |
+| **SVG.js** | a JS library, no app; emits SVG markup | static art via `edit.pasteSvg`; motion only if you rasterize frames yourself | usable for generative still art; animation is lost at paste. No rasterizer ships with this skill — that step is your own |
+| **Synfig Studio** | `.sif` scenes; bones, cutout rigs | *Plugins ▸ Export to Lottie* (1.4.0+, [docs](https://synfig.readthedocs.io/en/latest/export/export_for_web_lottie.html)) → `file.importLottie`; `synfig` CLI → PNG sequence only when the file has bones, which its Lottie export does not support | the most capable free authoring here, and the only one whose motion can arrive without baking |
+| **Friction** | Qt GUI; vector and raster animation for web and video | stills via `pasteSvg`, motion only as baked frames | manual, GUI-bound; no Lottie route (absent from its README and docs site) |
+| **OpenToonz** | GUI + `tcomposer`; scans, peg-hole camera work | baked frames only | manual authoring for the Ghibli-style line look; the CLI is a compositor, not an authoring surface |
+| **Pencil2D** | GUI, frame-by-frame drawing | baked frames only | manual authoring for hand-drawn loop squiggles and doodles |
+
+Baking frames is the last resort, not a default: 1080×1920×30 fps costs ~2 MB per PNG frame, so bake
+the seconds you actually show, then treat the sequence as one footage layer. Reason to bake over the
+engine's own motion: custom shaders, volumetrics, bone rigs, frame-by-frame drawing — see
+[3d.md](3d.md) "When to prefer this over baking" for the same rule applied to models.
+
+Which to reach for: **Glaxnimate or Synfig → Lottie** when you need vector motion the spec cannot
+express; **Pencil2D or OpenToonz → frames** when the look is hand-drawn or scanned; **SVG.js** only
+for still art generated in code. Hand-writing Lottie JSON is not worth it — a hand-built 5.7.4 file
+imported as an empty 1-layer comp with no warning; start from a real export or LottieFiles.
+
 ## Sound FX and beds
 
 Local palette and placement rules: [sound.md](sound.md). This table is where to get files the
@@ -126,6 +159,8 @@ shipped palette lacks.
   bare name.
 - 3D: `assets/3d/<name>.glb`; the spec references the bare name.
 - SVG: no file needed — paste the markup into a `custom` scene or a build step.
+- Baked frames: work output, not an asset — render them beside the spec, import, render, delete. Commit
+  them and each run pays ~2 MB per frame in the repo, plus a LICENSES.md line.
 - Fonts: system font directory, plus the manifest entry.
 
 Every asset committed under `assets/` gets a line in [../assets/LICENSES.md](../assets/LICENSES.md)
