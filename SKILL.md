@@ -22,7 +22,7 @@ This procedure is self-contained and runs without any design-approval gate. Gene
 **0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `$E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `$E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 3), re-run `$E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
 
 ```bash
-E=${EFFECTCRAFT_SKILL:-~/.claude/skills/effectcraft-motion}/bin/ecm   # Hermes: ~/.hermes/skills/creative/effectcraft-motion
+E=ecm   # bin/install puts it on PATH; otherwise <this skill's folder>/bin/ecm
 $E themes --suggest video.json    # 0 four themes + type your own
 $E check video.json --strict      # 1 validate + craft lint (C01–C15)
 $E preview video.json   # 2 builds video.sheet.png
@@ -30,7 +30,7 @@ $E preview video.json   # 2 builds video.sheet.png
 
 **Fonts:** once per machine, `$E fonts --install` — downloads the theme fonts from Google Fonts (OFL) into the user's font directory on demand; idempotent, skips fonts already installed. `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
 
-3. **Read the sheet with the Read tool.** Every panel. One settled frame per scene.
+3. **Look at the sheet image yourself.** Every panel. One settled frame per scene. Open the PNG with your own image tool (Claude Code `Read`, Codex `view_image`, Gemini CLI `read_file`, Hermes `vision_analyze` only when it says the image is loaded natively). A written analysis from another model or a "describe this image" tool is not your review: it misses clipped text and bland panels. If you cannot see images, say so in the report and never call the sheet clean.
 4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
 5. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
 6. `$E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
@@ -106,6 +106,8 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | "Hand-write JSX for this one scene" | Use `custom` + helpers, or extend `lib/fx.jsx` |
 | "User gave no data; I'll ask before doing anything" | Time-pressed/no-data rule above: deliver number-free or labelled-illustration, say which |
 | "I'll run the brainstorming skill first" | This procedure is self-contained; render requests don't need a design-approval gate |
+| "The vision tool described the sheet, good enough" | A describer model's text is not your eyes; open the image yourself or report that you could not |
+| "Preview keeps failing on duration, I'll loop a script that bumps it" | Omit `duration`; auto timing fits. A retry loop hides the real error |
 | "Bars > 100 won't validate, I'll invent smaller real numbers" | Scale proportionally, exact figures in labels |
 
 ## Common mistakes
@@ -118,5 +120,5 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | Every scene fixed at 3 s | Omit `duration` |
 | Default font, generic dark bg | Pick a theme |
 | Hand-adding AE effects in `custom` JSX | Use an `fx` preset; new effect: add it to `lib/fx.jsx` |
-| `sed -i` on macOS | Edit tool on the spec |
+| `sed -i` on macOS | Your file-edit tool on the spec |
 | Raw CLI inside scenes | Raw `effectcraft-cli` only for edits outside these scenes ([reference/cli.md](reference/cli.md)) |

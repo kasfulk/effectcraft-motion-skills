@@ -25,8 +25,8 @@ sudo apt install nodejs imagemagick ffmpeg fontconfig
 Pasang skill secara lokal:
 
 ```sh
-ln -s "$PWD" ~/.claude/skills/effectcraft-motion   # macOS/Claude Code
-ln -s "$PWD" ~/.hermes/skills/creative/effectcraft-motion   # Hermes
+bin/install   # link ke ~/.agents/skills (Codex, Gemini CLI, Cline, OpenCode, omp) + Claude Code/Hermes/Pi/Kimi bila ada, dan `ecm` ke ~/.local/bin
+bin/install ~/path/skills-harness-lain   # harness lain: sebut folder skills-nya
 ```
 
 ## Mulai cepat
