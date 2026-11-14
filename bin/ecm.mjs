@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, realpathSy
 import { tmpdir, homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
 export const SCENE_TYPES = ["hook", "kinetic", "stat", "bars", "donut", "steps", "compare", "quote", "outro", "custom",
   "counter", "dotgrid", "dial", "orbit", "cards", "timeline", "particles", "zoom", "model"];
@@ -631,7 +631,7 @@ export function suggestThemes(spec, themes) {
 }
 
 function fonts() {
-  const dir = resolve(dirname(new URL(import.meta.url).pathname), "../assets/fonts");
+  const dir = fileURLToPath(new URL("../assets/fonts/", import.meta.url));
   const manifest = JSON.parse(readFileSync(join(dir, "fonts.json"), "utf8"));
   if (process.argv.includes("--list")) {
     const byCat = {};
@@ -969,7 +969,7 @@ const FFMPEG = resolveBin("ffmpeg", ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin
 const FFPROBE = resolveBin("ffprobe", ["/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffprobe", "/usr/bin/ffprobe"]);
 const AUDIO_EXT = /\.(wav|m4a|mp3|ogg)$/i;
 
-const sfxDir = () => new URL("../assets/sfx/", import.meta.url).pathname;
+const sfxDir = () => fileURLToPath(new URL("../assets/sfx/", import.meta.url));
 
 // name resolves to assets/sfx/<name>.<ext>, assets/sfx/beds/<name>.<ext>, else spec-relative path
 export function resolveSfxFile(name, specDir) {
@@ -982,7 +982,7 @@ export function resolveSfxFile(name, specDir) {
 }
 
 const MODEL_EXTS = [".glb", ".gltf", ".obj", ".stl", ".fbx"];
-const modelDir = () => new URL("../assets/3d/", import.meta.url).pathname;
+const modelDir = () => fileURLToPath(new URL("../assets/3d/", import.meta.url));
 
 // name resolves to assets/3d/<name> or assets/3d/<name>.glb, else spec-relative path
 export function resolveModelFile(name, specDir) {

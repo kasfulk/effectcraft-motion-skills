@@ -1,0 +1,13 @@
+{
+  "name": "effectcraft-motion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JSON spec to 1080x1920 motion graphics MP4 via effectcraft-cli",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "smoke": "bash test/smoke.sh"
+  }
+}

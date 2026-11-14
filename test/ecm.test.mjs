@@ -12,6 +12,7 @@ const FFPROBE_BIN = ["ffprobe", "/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffp
 import { mkdtempSync, symlinkSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadThemes, loadTemplates, validate, validateDeck, validateSpec, durationOf, buildScript, buildSlidesScript, resolveTheme, lint, audioArgs, resolveSfxFile, resolveModelFile, muxAudio, FX_NAMES, SLIDE_SIZES, TRANSITIONS } from "../bin/ecm.mjs";
 
 const T = loadThemes(); const reel = T.reel, tenang = T.tenang;
@@ -85,7 +86,7 @@ test("validate: theme colors/fonts overrides", () => {
 });
 test("new: default spec validates, unknown theme exits 1", () => {
   const dir = mkdtempSync(join(tmpdir(), "ecm-"));
-  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bin = fileURLToPath(new URL("../bin/ecm.mjs", import.meta.url));
   try {
     const bad = spawnSync(process.execPath, [bin, "new", "nope"], {encoding:"utf8"});
     assert.equal(bad.status, 1);
@@ -115,7 +116,7 @@ test("script embeds hostile text safely", () => {
 test("CLI runs through a symlinked install", () => {
   const dir = mkdtempSync(join(tmpdir(), "ecm-"));
   try {
-    symlinkSync(new URL("..", import.meta.url).pathname, join(dir, "link"));
+    symlinkSync(fileURLToPath(new URL("..", import.meta.url)), join(dir, "link"));
     const spec = join(dir, "bad.json");
     writeFileSync(spec, JSON.stringify({theme:"reel", scenes:[{type:"donut", value:120}]}));
     const r = spawnSync(process.execPath, [join(dir, "link/bin/ecm.mjs"), "check", spec], {encoding:"utf8"});
@@ -127,7 +128,7 @@ test("CLI runs through a symlinked install", () => {
 const TPL = loadTemplates();
 
 test("themes: plain output has 9 tab-separated columns per theme", () => {
-  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bin = fileURLToPath(new URL("../bin/ecm.mjs", import.meta.url));
   const r = spawnSync(process.execPath, [bin, "themes"], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stderr);
   const lines = r.stdout.trim().split("\n");
@@ -137,7 +138,7 @@ test("themes: plain output has 9 tab-separated columns per theme", () => {
 });
 
 test("themes: --json round-trips to loadThemes()", () => {
-  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bin = fileURLToPath(new URL("../bin/ecm.mjs", import.meta.url));
   const r = spawnSync(process.execPath, [bin, "themes", "--json"], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout), T);
@@ -333,14 +334,14 @@ test("C10: data-only", () => {
   assert.equal(L([{type:"stat",value:1,label:"x",suffix:"%"},{type:"bars",items:[{label:"a",value:1},{label:"b",value:2}],highlight:0},{type:"kinetic",lines:["arti angka ini"]},{type:"outro",text:"Simpan.",cta:"Follow",emphasis:"simpan"}]).filter((l) => l.startsWith("C10")).length, 0);
 });
 test("lint: examples produce zero errors, lint-bad triggers many codes", () => {
-  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
+  const bin = fileURLToPath(new URL("../bin/ecm.mjs", import.meta.url));
   for (const name of ["hemat.json", "all-scenes.json"]) {
-    const file = new URL(`../examples/${name}`, import.meta.url).pathname;
+    const file = fileURLToPath(new URL(`../examples/${name}`, import.meta.url));
     const r = spawnSync(process.execPath, [bin, "check", file], {encoding: "utf8"});
     assert.equal(r.status, 0, r.stderr);
     for (const line of r.stdout.split("\n")) assert.ok(!line.startsWith("ERROR"), line);
   }
-  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const bad = fileURLToPath(new URL("../examples/lint-bad.json", import.meta.url));
   const r = spawnSync(process.execPath, [bin, "check", bad], {encoding: "utf8"});
   assert.equal(r.status, 0, r.stderr);
   const found = [...new Set(r.stdout.split("\n").filter((l) => l.startsWith("WARN")).map((l) => l.slice(6, 9)))];
@@ -348,8 +349,8 @@ test("lint: examples produce zero errors, lint-bad triggers many codes", () => {
   for (const c of ["C01","C03","C04","C05","C06","C07","C08"]) assert.ok(found.includes(c), `${c} missing from ${found.join(",")}`);
 });
 test("check: --strict exits 2 on warnings, 0 when clean", () => {
-  const bin = new URL("../bin/ecm.mjs", import.meta.url).pathname;
-  const bad = new URL("../examples/lint-bad.json", import.meta.url).pathname;
+  const bin = fileURLToPath(new URL("../bin/ecm.mjs", import.meta.url));
+  const bad = fileURLToPath(new URL("../examples/lint-bad.json", import.meta.url));
   const r = spawnSync(process.execPath, [bin, "check", bad, "--strict"], {encoding: "utf8"});
   assert.equal(r.status, 2);
   assert.ok(r.stdout.includes("WARN  "), r.stdout);
@@ -371,7 +372,7 @@ test("check: --strict exits 2 on warnings, 0 when clean", () => {
 });
 
 // --- audio ---
-const SPEC_DIR = new URL("..", import.meta.url).pathname;
+const SPEC_DIR = fileURLToPath(new URL("..", import.meta.url));
 const SFX_DIR = join(SPEC_DIR, "assets", "sfx");
 const aSpec = (audio) => ({ theme: "reel", scenes: [{ type: "hook", text: "Hai" }, { type: "outro", text: "Bye" }], audio });
 const STARTS = [0, 3];

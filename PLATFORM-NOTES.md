@@ -22,8 +22,10 @@ ships with Debian/Ubuntu (`convert`, `montage`, `identify`). The code picks whic
 
 ## Fonts
 
-`bin/ecm fonts --install` copies the bundled OFL fonts to `~/Library/Fonts` on macOS and
-`~/.local/share/fonts` on Linux, then runs `fc-cache` only where fontconfig exists.
+`bin/ecm fonts --install` downloads the theme fonts from Google Fonts (OFL) into
+`~/Library/Fonts` on macOS and `~/.local/share/fonts` on Linux, skipping any file already
+present, then runs `fc-cache` only where fontconfig exists. It needs network access; there
+is no offline bundle.
 
 ## Contact-sheet labels
 

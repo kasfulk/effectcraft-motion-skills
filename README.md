@@ -58,8 +58,16 @@ Referensi:
 - [Cold-reader review of the contact sheet](reference/review.md)
 - [Platform notes: macOS + Linux](PLATFORM-NOTES.md)
 
+Tes unit (cepat, tanpa render):
+
+```sh
+npm test
+```
+
 Tes smoke lengkap memakai engine secara serial:
 
 ```sh
 bash test/smoke.sh
 ```
+
+Lisensi: [MIT](LICENSE). Font, SFX dan model 3D punya lisensinya masing-masing — lihat [assets/LICENSES.md](assets/LICENSES.md).
