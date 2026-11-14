@@ -93,6 +93,15 @@ After preview, score your own sheet against [reference/review.md](reference/revi
 | Bars values over 100 | Scale proportionally (e.g. in thousands); exact figure goes in the `label` |
 | `donut` value > 100 | Wrong scene or wrong meaning — a donut is a share of 100 |
 | Two panels look identical | Delete one; one fact per stat |
+| kinetic (layout `slide`) words collide — "Gua Hira." renders as "GuaHira." with overlapping glyphs | Set `"layout": "mask"` on that scene; `slide` mis-measures word width on some lines |
+| kinetic `emphasis` highlights the wrong glyph (e.g. gold `U` of the last line) under `mask` | Drop `emphasis` from that scene — check passes clean without it |
+| `steps` (layout `timeline`) draws the axis stopping short of the last node | Set `"layout": "list"` — numbered badges, no half-drawn axis |
+| `stat` ring bleeds off the left edge, panel reads lopsided | Set `"layout": "center"` on the stat scene |
+| `model` scene rejects every explicit `duration` ("needs ≥ Ns", N grows as you raise it) | Settle is `0.6 × dur`, so `need = 0.6·dur + 1.5` — any `duration` above 3.75 s can never satisfy it. Cap model scenes at 3.75 s, or omit `duration` and let auto-timing pick |
+| Panels alternate dark and cream for no reason | `bg` values are `base` (theme dark), `ink` (theme **text** colour — cream on dark themes), `accent`. `"bg":"ink"` is the light panel, not a darker one |
+| Arabic quote clips the card/rule or a word detaches | Set `"layout": "center"` on the quote scene and drop `emphasis` — `card`/`rule` measure the RTL line LTR and overflow |
+| Imported GLB renders as an open/see-through box | Face winding must be CCW seen from outside: `[b, b+2, b+1, b, b+3, b+2]`. Inverted winding culls the front faces and the box reads hollow |
+| Imported GLB renders near-black | `metallicFactor` > 0 with no env map. Set it to 0 in the file (see `models/glb_metal0.py` pattern) — the spec cannot recolour a model |
 | Slide shows `@yourpage` | Deck spec: set `"handle": "@..."` |
 
 ## Red flags — these thoughts are wrong
