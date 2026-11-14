@@ -13,7 +13,7 @@ bin/ecm check examples/hemat.json
 Validates the JSON without starting EffectCraft. It prints estimated seconds per scene, such as `1  hook  2.67`, followed by `total  13.33`. Validation errors print to stderr and the command exits 1. Exact validation messages include:
 
 - `spec: must be an object`
-- `theme: unknown "nope" (reel, pitch, infopop, kinetik, tenang, edukasi)`
+- `theme: unknown "nope" (reel, pitch, infopop, kinetik, tenang, edukasi, … all 70 ids from themes.json)`
 - `out: must be a .mp4 path`
 - `scenes: must be a non-empty array`
 - `scene 1 (chart): type unknown`
@@ -50,7 +50,7 @@ bin/ecm check spec.json --strict
 
 ### Craft lint
 
-Rules C01–C10 as printed by `check` (see `examples/lint-bad.json`):
+Rules C01–C15 as printed by `check` (see `examples/lint-bad.json`):
 
 | code | rule | message | fix |
 |---|---|---|---|
@@ -81,6 +81,11 @@ Rules C01–C10 as printed by `check` (see `examples/lint-bad.json`):
 | C08 | donut value with decimals | `donut value <v> has decimals` | round `"value"` to a whole number |
 | C09 | explicit duration on a text scene over 2× the auto estimate | `explicit duration <d>s is more than 2x the <a>s estimate; long hold, viewers scroll` | remove `"duration"` or set it near `<a>` |
 | C10 | ≥ 3 data scenes (stat/bars/donut) and no kinetic/steps/quote | `<n> data scenes: numbers without a line of meaning` | add a kinetic, steps, or quote scene that says what the numbers mean |
+| C11 | adjacent scenes with same type and same resolved layout | `same type and layout as scene <i>` | change `"layout"` on one of them (allowed layouts are listed in the fix) |
+| C12 | every scene uses the same non-`cut` transition (≥ 3 transitions) | `every scene uses "<t>"` | vary transitions — any of the 13 except `cut` |
+| C13 | no atmosphere on any scene, no theme atmosphere/fx, no spec fx | `no atmosphere or fx: flat background` | add `"atmosphere":"glow"` or an fx preset |
+| C14 | long text in newer types: `cards[].text` > 6 words, `timeline` event `label` > 5 words, `zoom` level `label` > 4 words | `card <j> is <n> words` / `event <j> is <n> words` / `level <j> is <n> words` | trim the text to the limit |
+| C15 | ≥ 2 distinct `type:layout` combinations repeat across scenes | `<n> layouts repeat` | vary `"layout"` across scenes |
 
 `scene` is `scenes[<i>] (<type>)` for scene findings, or `spec` for spec-level findings. Words are whitespace-split.
 

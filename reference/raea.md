@@ -22,10 +22,10 @@ and embed the result as footage.
 raea render scene.tsx -o scene.mp4
 
 # 2. import it into an effectcraft project as a footage layer
-bin/ecm-raea-bridge.m scene.tsx --out scene.mp4 --dur 3 --comp Bridge --project out.ecproj
+bin/ecm-raea-bridge.mjs scene.tsx --out scene.mp4 --dur 3 --comp Bridge --project out.ecproj
 ```
 
-`ecm-raea-bridge.m` does both steps: renders the `.tsx` via `raea` (no size flags — raea
+`ecm-raea-bridge.mjs` does both steps: renders the `.tsx` via `raea` (no size flags — raea
 reads them from the composition), then creates a one-scene `.ecproj` whose only layer is
 the rendered MP4. `--dur` sets the effectcraft comp's length, not raea's — keep the
 composition's `durationInFrames` at `dur * 30` so the two agree. Embed it in a full spec by importing that

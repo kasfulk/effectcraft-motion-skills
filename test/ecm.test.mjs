@@ -354,7 +354,7 @@ test("check: --strict exits 2 on warnings, 0 when clean", () => {
   const r = spawnSync(process.execPath, [bin, "check", bad, "--strict"], {encoding: "utf8"});
   assert.equal(r.status, 2);
   assert.ok(r.stdout.includes("WARN  "), r.stdout);
-  const cleanSpec = { theme: "reel", scenes: [
+  const cleanSpec = { theme: "reel", transition: "cut", scenes: [
     {type:"hook", text:"Gaji naik, tabungan tetap?", emphasis:"tetap"},
     {type:"stat", value:72, suffix:"%", label:"pekerja belum punya dana darurat", bg:"ink"},
     {type:"bars", title:"Tabungan per bulan", items:[{label:"Jan",value:40},{label:"Feb",value:72}], highlight:1},
@@ -506,4 +506,15 @@ test("resolveModelFile returns undefined for missing files", () => {
 test("buildScript throws when model file not found", () => {
   const spec = {theme:"reel", scenes:[{type:"model", src:"missing.glb"}]};
   assert.throws(() => buildScript(spec, reel, [3], SPEC_DIR), /cannot find "missing\.glb"/);
+});
+
+test("theme motion.transition is the spec-level default transition", () => {
+  // kinetik declares motion.transition "zoom"; a spec with no transition inherits it.
+  const kinetik = T.kinetik;
+  assert.equal(kinetik.motion.transition, "zoom");
+  const src = buildScript({theme:"kinetik", scenes:[{type:"hook", text:"a"}, {type:"outro", text:"b"}]}, kinetik, [3, 3]);
+  assert.ok(src.includes('"zoom"'), "theme default transition emitted");
+  // spec-level transition still wins over the theme default
+  const src2 = buildScript({theme:"kinetik", transition:"fade", scenes:[{type:"hook", text:"a"}, {type:"outro", text:"b"}]}, kinetik, [3, 3]);
+  assert.ok(src2.includes('"fade"'), "spec transition overrides theme");
 });

@@ -8,7 +8,7 @@ Ported from reel-skill-chat `references/sound.md` and `references/rules.md` (Sou
                   {"scene": 2, "name": "thunder-1"}]}
 ```
 
-`at` = seconds on the final timeline; `scene` = 0-based scene start time. Names resolve under `assets/sfx/beds/` (bed) and `assets/sfx/` (sfx). Use only real names; run `ls assets/sfx assets/sfx/beds` first. Field details live in [scenes.md](scenes.md), not here.
+`at` = seconds on the final timeline; `scene` = 1-based scene number (1 = first scene, plays at that scene's start). Names resolve under `assets/sfx/beds/` (bed) and `assets/sfx/` (sfx). Use only real names; run `ls assets/sfx assets/sfx/beds` first. Field details live in [scenes.md](scenes.md), not here.
 
 ## Real assets on disk
 
@@ -68,12 +68,12 @@ A 5-scene, ~28 s reel, theme `tenang`:
     "bed": "sea",
     "bedGain": -20,
     "sfx": [
-      {"scene": 0, "name": "impactBell_heavy_000", "gain": -10},
-      {"scene": 1, "name": "chips-collide-2", "gain": -14},
-      {"scene": 2, "name": "chips-collide-3", "gain": -14},
+      {"scene": 1, "name": "impactBell_heavy_000", "gain": -10},
+      {"scene": 2, "name": "chips-collide-2", "gain": -14},
+      {"scene": 3, "name": "chips-collide-3", "gain": -14},
       {"at": 17.5, "name": "impactGlass_light_000", "gain": -12},
-      {"scene": 3, "name": "drop_001", "gain": -12},
-      {"scene": 4, "name": "impactBell_heavy_003", "gain": -10}
+      {"scene": 4, "name": "drop_001", "gain": -12},
+      {"scene": 5, "name": "impactBell_heavy_003", "gain": -10}
     ]
   },
   "scenes": [
@@ -86,7 +86,7 @@ A 5-scene, ~28 s reel, theme `tenang`:
 }
 ```
 
-Checklist: 6 sfx over ~28 s (≈1 per 4.7 s) · no two within 0.5 s · one soft weight throughout (tenang) · quiet stretch before scene 3's ping · one bed at -20 dB · final bell resolves the outro.
+Checklist: 6 sfx over ~28 s (≈1 per 4.7 s) · no two within 0.5 s · one soft weight throughout (tenang) · quiet stretch before scene 4's ping · one bed at -20 dB · final bell resolves the outro.
 
 ## What was deliberately not ported
 

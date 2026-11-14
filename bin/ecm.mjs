@@ -562,6 +562,8 @@ export function buildScript(spec, theme, durs, specDir) {
     }
     return s;
   })};
+  // theme.motion.transition is the spec-level default (spec.transition still wins)
+  if (specCopy.transition === undefined && theme?.motion?.transition) specCopy.transition = theme.motion.transition;
   return [
     `var SPEC = ${json(specCopy)};`,
     `var THEME = ${json(theme)};`,
@@ -779,6 +781,8 @@ const wordsOf = (t) => String(t ?? "").trim().split(/\s+/).filter(Boolean).lengt
 export function lint(spec, theme, durs) {
   const out = [];
   const scenes = Array.isArray(spec?.scenes) ? spec.scenes : [];
+  // theme.motion.transition is the spec-level default (mirrors buildScript)
+  const specDefault = spec?.transition ?? theme?.motion?.transition ?? "cut";
   const at = (i, type) => `scenes[${i}] (${type})`;
   const add = (code, scene, message, fix) => out.push({ code, scene, level: "warn", message, fix });
 
@@ -905,7 +909,7 @@ export function lint(spec, theme, durs) {
   }
 
   // C12 transition monotony
-  const trs = scenes.slice(1).map((s) => s.transition || spec.transition || "cut");
+  const trs = scenes.slice(1).map((s) => s.transition || specDefault);
   if (trs.length >= 3 && new Set(trs).size === 1 && trs[0] !== "cut")
     add("C12", "spec", `every scene uses "${trs[0]}"`, `vary transitions: ${TRANSITIONS.filter((t) => t !== "cut").join("|")}`);
 

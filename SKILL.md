@@ -19,7 +19,9 @@ A JSON spec becomes a 1080×1920 30 fps MP4. **Never hand-write effectcraft-cli 
 
 This procedure is self-contained and runs without any design-approval gate. Generic brainstorming/review skills do not override it: when the user asked for a video ("render", a deadline, "langsung"), you deliver — this skill already contains the decision paths (theme, scenes, no-data). Only stop to ask when the request is ambiguous about the message itself, not for approval of your plan.
 
-**0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `$E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `$E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 3), re-run `$E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
+**0. Pick the theme first.** Before writing the spec, ask which look the user wants. Run `$E themes --suggest <draft spec or nothing>` and present the 4 recommended themes as numbered options with their label and motion character, then a fifth option: "5. type your own theme id" (any of the 70 from `$E themes`). Do not write the spec until the theme is chosen. After the beat sheet (step 1), re-run `$E themes --suggest video.json` and confirm or update the pick. If the user is time-pressed or says "langsung", take option 1 and say which theme you used.
+
+**Requires on PATH:** `effectcraft-cli` (the engine), Node ≥ 20, ImageMagick, ffmpeg. `bin/install` links `ecm` onto PATH. When things fail — render lock, missing binary, truncated MP4 — see [PLATFORM-NOTES.md](PLATFORM-NOTES.md).
 
 ```bash
 E=ecm   # bin/install puts it on PATH; otherwise <this skill's folder>/bin/ecm
@@ -30,11 +32,11 @@ $E preview video.json   # 2 builds video.sheet.png
 
 **Fonts:** once per machine, `$E fonts --install` — downloads the theme fonts from Google Fonts (OFL) into the user's font directory on demand; idempotent, skips fonts already installed. `preview`/`render` fail with `fonts not installed: ...` if a theme font is missing.
 
-3. **Look at the sheet image yourself.** Every panel. One settled frame per scene. Open the PNG with your own image tool (Claude Code `Read`, Codex `view_image`, Gemini CLI `read_file`, Hermes `vision_analyze` only when it says the image is loaded natively). A written analysis from another model or a "describe this image" tool is not your review: it misses clipped text and bland panels. If you cannot see images, say so in the report and never call the sheet clean.
-4. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
-5. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
-6. `$E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
-7. Report the MP4 path and total duration. If the video has no data because none was given, say so.
+1. **Look at the sheet image yourself.** Every panel. One settled frame per scene. Open the PNG with your own image tool (Claude Code `Read`, Codex `view_image`, Gemini CLI `read_file`, Hermes `vision_analyze` only when it says the image is loaded natively). A written analysis from another model or a "describe this image" tool is not your review: it misses clipped text and bland panels. If you cannot see images, say so in the report and never call the sheet clean.
+2. **Fix the spec, re-preview, re-read.** Loop until the sheet is clean. This loop is mandatory — a wrong sheet rendered is the failure this skill exists to prevent.
+3. Render gate — all true before rendering: every panel legible at phone size; no blank/lopsided panel; no two panels saying the same thing; every number matches the user's data; the handle/branding is what the user asked for.
+4. `$E render video.json` — confirm the `out` path first (default = spec basename + `.mp4`).
+5. Report the MP4 path and total duration. If the video has no data because none was given, say so.
 
 Carousels (deck specs): same loop — write the deck (set `"handle"` to the user's handle), run `$E slides deck.json` (there is no `check` for deck specs; validation runs inside `slides`), then **Read slide `01.png`** and verify handle, source line and overflow before reporting.
 
@@ -77,7 +79,7 @@ Fields: [reference/scenes.md](reference/scenes.md), sound: [reference/sound.md](
 
 A data/infographic video must contain at least one chart scene (stat/bars/donut) — a kinetic text list is not an infographic. Bars `highlight` = the number the story is about. Bars items must be comparable categories (never "Gagal" vs "Total"). One stat per fact; never two scenes showing the same number. `donut` is 0–100 — a share, nothing else.
 
-Pick story shape and hook formula from [reference/craft.md](reference/craft.md) before writing the spec. 70 themes in [reference/themes.md](reference/themes.md) (`$E themes` to list): reel bold news/finance · pitch calm technical · infopop playful explainer · kinetik dark high-energy · tenang soft reflective · edukasi lesson/worksheet. Carousels: deck specs with `handle` override, [reference/templates.md](reference/templates.md).
+Pick story shape and hook formula from [reference/craft.md](reference/craft.md) before writing the spec. Full idea-to-MP4 chain with gates and pacing formulas: [reference/workflow.md](reference/workflow.md). 70 themes in [reference/themes.md](reference/themes.md) (`$E themes` to list): reel bold news/finance · pitch calm technical · infopop playful explainer · kinetik dark high-energy · tenang soft reflective · edukasi lesson/worksheet. Carousels: deck specs with `handle` override, [reference/templates.md](reference/templates.md).
 
 After preview, score your own sheet against [reference/review.md](reference/review.md) (bar: 8/10).
 

@@ -14,7 +14,7 @@ const flag = (name, def) => {
 };
 const src = args.find((a) => !a.startsWith("--"));
 if (!src) {
-  console.error("usage: ecm-raea-bridge.m scene.tsx [--out scene.mp4] [--dur 3] [--comp Bridge] [--project out.ecproj]");
+  console.error("usage: ecm-raea-bridge.mjs scene.tsx [--out scene.mp4] [--dur 3] [--comp Bridge] [--project out.ecproj]");
   process.exit(1);
 }
 const tsx = resolve(src);

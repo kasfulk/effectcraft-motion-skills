@@ -12,3 +12,14 @@ jobs:
         with:
           node-version: 20
       - run: npm test
+      # smoke-layouts shells out to effectcraft-cli (local binary, not on CI runners) — skip there
+      - name: Layout smoke (needs effectcraft-cli)
+        run: node scripts/smoke-layouts.mjs reel
+        continue-on-error: true
+      - name: Validate example specs
+        run: |
+          for f in examples/*.json; do
+            node bin/ecm.mjs check "$f" || exit 1
+          done
+      - name: Validate themes and templates load
+        run: node -e "import('./bin/ecm.mjs').then(m => { m.loadThemes(); m.loadTemplates(); })"

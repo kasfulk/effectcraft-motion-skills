@@ -56,6 +56,7 @@ Referensi:
 - [3D models](reference/3d.md)
 - [Free asset sources: fonts, SVG, 3D, effects, sound, 2D animation toolkits](reference/assets.md)
 - [Cold-reader review of the contact sheet](reference/review.md)
+- [Workflow: idea to MP4](reference/workflow.md)
 - [Platform notes: macOS + Linux](PLATFORM-NOTES.md)
 
 Tes unit (cepat, tanpa render):
@@ -68,6 +69,9 @@ Tes smoke lengkap memakai engine secara serial:
 
 ```sh
 bash test/smoke.sh
+node scripts/smoke-layouts.mjs   # smoke semua layout tanpa render penuh
 ```
+
+Contoh spec lengkap semua tipe scene: [examples/motion-gallery.json](examples/motion-gallery.json).
 
 Lisensi: [MIT](LICENSE). Font, SFX dan model 3D punya lisensinya masing-masing — lihat [assets/LICENSES.md](assets/LICENSES.md).

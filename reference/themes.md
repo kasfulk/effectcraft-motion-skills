@@ -20,8 +20,8 @@ Each theme now includes a `motion` object that defines visual transition charact
 | field | type | values | description |
 |-------|------|--------|-------------|
 | `energy` | string | `calm`, `snap`, `float` | Overall motion energy and intensity |
-| `stagger` | number | `0.12` - `0.35` | Delay between element animations |
-| `transition` | string | `fade`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Main transition effect |
+| `stagger` | number | `0.12` - `0.35` | Advisory only: pacing hint for staggered layouts; not read by the renderer |
+| `transition` | string | `fade`, `whip`, `fold`, `maskWipe`, `pageTurn`, `zoom`, `glitch`, `dipSeed`, `colorShift` | Spec-level default transition — a spec without `"transition"` inherits it; an explicit spec `transition` overrides |
 | `atmosphere` | string | `none`, `glow`, `grain`, `full` | Environmental treatment: `glow` = accent halo, `grain` = film noise, `full` = both. Every mode except `none` also gets the vignette. A scene's own `atmosphere` overrides the theme's. |
 
 ### Layouts Object
@@ -113,8 +113,8 @@ Example: `editorial-spread` uses `{"quote": "card", "steps": "timeline", "compar
 ### Notes
 
 - `motion.energy` determines the overall animation character and intensity
-- `motion.stagger` controls timing between successive animations (0.12-0.35 seconds)
-- `motion.transition` specifies the main visual transition effect
+- `motion.stagger` is an advisory pacing hint (0.12-0.35 seconds); the renderer does not read it — scene/layout `stagger` fields control actual element delays
+- `motion.transition` is the spec-level default transition: a spec without `"transition"` inherits it; an explicit spec `"transition"` overrides it
 - `motion.atmosphere` adds environmental context and texture
 - `layouts` overrides are included only for themes with specific composition needs
 - All new fields are optional with sensible defaults

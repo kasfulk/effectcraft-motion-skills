@@ -8,6 +8,8 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
+    "test:layouts": "command -v effectcraft-cli >/dev/null && node scripts/smoke-layouts.mjs reel || echo 'effectcraft-cli not on PATH — layout smoke skipped'",
+    "lint": "for f in examples/*.json; do bin/ecm check \"$f\" || exit 1; done",
     "smoke": "bash test/smoke.sh"
   }
 }
