@@ -25,8 +25,10 @@ const project = flag("project", out.replace(/\.mp4$/, ".ecproj"));
 
 if (!existsSync(tsx)) { console.error(`raea-bridge: no such file: ${tsx}`); process.exit(1); }
 for (const bin of ["raea", "effectcraft-cli"])
-  if (!spawnSync(bin, ["--version"], { encoding: "utf8" }).status)
-    { /* found */ } else { console.error(`raea-bridge: ${bin} not on PATH`); process.exit(1); }
+  if (spawnSync(bin, ["--version"], { encoding: "utf8" }).status !== 0) {
+    console.error(`raea-bridge: ${bin} not on PATH`);
+    process.exit(1);
+  }
 
 // 1. raea renders the tsx to an MP4 sized for the effectcraft comp.
 const r = spawnSync("raea", ["render", tsx, "-o", out], { encoding: "utf8" });
