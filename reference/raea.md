@@ -17,15 +17,18 @@ and embed the result as footage.
 ## The loop
 
 ```sh
-# 1. write the scene as a raea composition (1080×1920, 30 fps)
-raea render scene.tsx -o scene.mp4 --width 1080 --height 1920 --fps 30
+# 1. write the scene as a raea composition — size/duration live in the .tsx
+#    (<Composition width={1080} height={1920} fps={30} durationInFrames={90}>), not CLI flags
+raea render scene.tsx -o scene.mp4
 
 # 2. import it into an effectcraft project as a footage layer
 bin/ecm-raea-bridge.m scene.tsx --out scene.mp4 --dur 3 --comp Bridge --project out.ecproj
 ```
 
-`ecm-raea-bridge.m` does both steps: renders the `.tsx` via `raea`, then creates a one-scene
-`.ecproj` whose only layer is the rendered MP4. Embed it in a full spec by importing that
+`ecm-raea-bridge.m` does both steps: renders the `.tsx` via `raea` (no size flags — raea
+reads them from the composition), then creates a one-scene `.ecproj` whose only layer is
+the rendered MP4. `--dur` sets the effectcraft comp's length, not raea's — keep the
+composition's `durationInFrames` at `dur * 30` so the two agree. Embed it in a full spec by importing that
 project as footage (see [assets.md](assets.md)) or by pointing the bridge's `--project` at
 the spec's own `.ecproj` after `ecm preview` has created it.
 
